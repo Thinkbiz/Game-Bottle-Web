@@ -1,0 +1,11 @@
+git config --global init.defaultBranch main
+git branch -m main
+
+# Add all files (except those in .gitignore)
+git add .
+
+# Make initial commit
+git commit -m "Initial commit: Adventure game with web and CLI interfaces" 
+
+# Verify everything is committed
+git status
