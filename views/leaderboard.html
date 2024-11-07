@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Adventure Game Leaderboard</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <h1>Adventure Game Leaderboard</h1>
+        
+        <!-- Add Victory Types Legend -->
+        <div id="victory-legend">
+            <h2>Victory Types</h2>
+            <div class="legend-item perfect-victory">
+                <span class="legend-title">Perfect Victory</span>
+                <span class="legend-desc">Health > 80, Score > 50, XP ≥ 200</span>
+            </div>
+            <div class="legend-item glorious-victory">
+                <span class="legend-title">Glorious Victory</span>
+                <span class="legend-desc">Health > 50, XP ≥ 200</span>
+            </div>
+            <div class="legend-item pyrrhic-victory">
+                <span class="legend-title">Pyrrhic Victory</span>
+                <span class="legend-desc">Health ≤ 20, XP ≥ 200</span>
+            </div>
+            <div class="legend-item standard-victory">
+                <span class="legend-title">Standard Victory</span>
+                <span class="legend-desc">XP ≥ 200</span>
+            </div>
+            <div class="legend-item died">
+                <span class="legend-title">Died</span>
+                <span class="legend-desc">Health reached 0</span>
+            </div>
+        </div>
+
+        <!-- Existing leaderboard table -->
+        <div id="leaderboard">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Score</th>
+                        <th>XP</th>
+                        <th>Health</th>
+                        <th>Outcome</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    % for i, entry in enumerate(entries, 1):
+                        <tr class="{{entry.victory_type.lower().replace(' ', '-')}}">
+                            <td>{{i}}</td>
+                            <td>{{entry.player_name}}</td>
+                            <td>{{entry.score}}</td>
+                            <td>{{entry.xp}}</td>
+                            <td>{{entry.health}}</td>
+                            <td>{{entry.victory_type}}</td>
+                            <td>{{entry.date.strftime('%Y-%m-%d %H:%M')}}</td>
+                        </tr>
+                    % end
+                </tbody>
+            </table>
+        </div>
+        <a href="/" class="game-button">Back to Game</a>
+    </div>
+</body>
+</html> 

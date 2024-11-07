@@ -1,0 +1,214 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#game-container {
+    max-width: 800px;
+    width: 100%;
+    text-align: center;
+}
+
+#game-output {
+    border: 1px solid #ccc;
+    padding: 20px;
+    margin-bottom: 20px;
+    background-color: white;
+    text-align: left;
+}
+
+#game-input {
+    margin-top: 20px;
+}
+
+input[type="text"] {
+    padding: 10px;
+    width: 200px;
+    margin-right: 10px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+}
+
+.game-button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 0 10px;
+}
+
+.game-button:hover {
+    background-color: #45a049;
+}
+
+#stats-display {
+    background-color: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+#stats-display p {
+    margin: 0;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Add these new styles */
+.perfect-victory {
+    border: 3px solid gold !important;
+    background: linear-gradient(to bottom right, #fff7e6, #fff) !important;
+    color: #b8860b !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    animation: victory-glow 2s infinite;
+}
+
+.glorious-victory {
+    border: 3px solid silver !important;
+    background: linear-gradient(to bottom right, #f0f0f0, #fff) !important;
+    color: #4a4a4a !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.pyrrhic-victory {
+    border: 3px solid #8b0000 !important;
+    background: linear-gradient(to bottom right, #fff0f0, #fff) !important;
+    color: #8b0000 !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    animation: pyrrhic-pulse 2s infinite;
+}
+
+@keyframes victory-glow {
+    0% { box-shadow: 0 0 5px gold; }
+    50% { box-shadow: 0 0 20px gold; }
+    100% { box-shadow: 0 0 5px gold; }
+}
+
+@keyframes pyrrhic-pulse {
+    0% { box-shadow: 0 0 5px #8b0000; }
+    50% { box-shadow: 0 0 15px #8b0000; }
+    100% { box-shadow: 0 0 5px #8b0000; }
+}
+
+#leaderboard table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+#leaderboard th, #leaderboard td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#leaderboard th {
+    background-color: #4CAF50;
+    color: white;
+}
+
+#leaderboard tr:nth-child(even) {
+    background-color: #f5f5f5;
+}
+
+#leaderboard tr.perfect-victory,
+#leaderboard tr.glorious-victory,
+#leaderboard tr.pyrrhic-victory,
+#leaderboard tr.standard-victory {
+    background: linear-gradient(to right, #e8f5e9, #fff);
+    color: #2e7d32;  /* Dark green */
+    font-weight: bold;
+}
+
+#leaderboard tr.died {
+    background: linear-gradient(to right, #ffebee, #fff);
+    color: #c62828;  /* Ruby red */
+    font-weight: bold;
+}
+
+#leaderboard tr.died td {
+    opacity: 1;
+}
+
+#leaderboard tr.perfect-victory:hover,
+#leaderboard tr.glorious-victory:hover,
+#leaderboard tr.pyrrhic-victory:hover,
+#leaderboard tr.standard-victory:hover {
+    background: #e8f5e9;
+}
+
+#leaderboard tr.died:hover {
+    background: #ffebee;
+}
+
+/* Add these new styles */
+#victory-legend {
+    margin: 20px 0;
+    padding: 20px;
+    background: #f8f8f8;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#victory-legend h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.legend-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 4px;
+}
+
+.legend-title {
+    font-weight: bold;
+    flex: 1;
+}
+
+.legend-desc {
+    flex: 2;
+    text-align: right;
+    font-style: italic;
+}
+
+/* Style each victory type in the legend */
+.legend-item.perfect-victory {
+    background: linear-gradient(to right, #e8f5e9, #fff);
+    color: #2e7d32;
+}
+
+.legend-item.glorious-victory {
+    background: linear-gradient(to right, #e8f5e9, #fff);
+    color: #2e7d32;
+}
+
+.legend-item.pyrrhic-victory {
+    background: linear-gradient(to right, #e8f5e9, #fff);
+    color: #2e7d32;
+}
+
+.legend-item.standard-victory {
+    background: linear-gradient(to right, #e8f5e9, #fff);
+    color: #2e7d32;
+}
+
+.legend-item.died {
+    background: linear-gradient(to right, #ffebee, #fff);
+    color: #c62828;
+}

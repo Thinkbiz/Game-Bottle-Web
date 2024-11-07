@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Adventure Game</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+</head>
+<body>
+    <div id="game-container">
+        % if player_stats:
+        <div id="stats-display">
+            <p>Health: {{player_stats['health']}} | Score: {{player_stats['score']}} | XP: {{player_stats['xp']}}</p>
+        </div>
+        % end
+        <div id="game-output" class="{{get('victory_type', '').lower().replace(' ', '-')}}">
+            {{message}}
+        </div>
+        <div id="game-input">
+            % if show_name_input:
+                <form action="/start" method="post">
+                    <input type="text" name="player_name" placeholder="Enter your name" required>
+                    <button type="submit" class="game-button">Start Adventure</button>
+                </form>
+            % end
+            
+            % if show_choices:
+                <form action="/choice" method="post">
+                    <button type="submit" name="choice" value="adventure" class="game-button">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="game-button">Rest</button>
+                </form>
+            % end
+
+            % if show_treasure_choices:
+                <form action="/choice" method="post">
+                    <button type="submit" name="choice" value="search_alone" class="game-button">Search Alone</button>
+                    <button type="submit" name="choice" value="get_help" class="game-button">Get Help (10 points)</button>
+                    <button type="submit" name="choice" value="ignore" class="game-button">Ignore</button>
+                </form>
+            % end
+
+            % if show_monster_choices:
+                <form action="/choice" method="post">
+                    <button type="submit" name="choice" value="fight" class="game-button">Fight</button>
+                    <button type="submit" name="choice" value="run" class="game-button">Run</button>
+                </form>
+            % end
+        </div>
+        <div id="leaderboard-link">
+            <a href="/leaderboard" class="game-button">View Leaderboard</a>
+        </div>
+    </div>
+</body>
+</html> 
