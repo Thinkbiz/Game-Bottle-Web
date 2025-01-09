@@ -1,6 +1,6 @@
 from bottle import route, run, template, static_file, request, redirect
 import random
-from database import GameState, init_db, add_to_leaderboard, get_leaderboard
+from database import init_db, add_to_leaderboard, get_leaderboard
 
 print("Starting imports...", flush=True)  # Debug print
 
@@ -50,7 +50,10 @@ def game():
 
 @route('/choice', method='POST')
 def make_choice():
-    choice = request.forms.get('choice')
+    choice = request.forms.get('choice', '').strip()
+    if not choice or 'stats' not in current_game_state:
+        return redirect('/')  # Redirect to start if no valid choice or game state
+        
     template_vars = TEMPLATE_DEFAULTS.copy()
     stats = current_game_state['stats']
     player_name = current_game_state.get('player_name', 'Adventurer')
@@ -77,13 +80,15 @@ def make_choice():
         if event == "monster":
             template_vars.update({
                 'message': "A wild ugly Monster appears!",
-                'show_monster_choices': True
+                'show_monster_choices': True,
+                'event_type': 'monster'
             })
         
         elif event == "treasure":
             template_vars.update({
                 'message': "You have learned about a treasure chest from a local in town!",
-                'show_treasure_choices': True
+                'show_treasure_choices': True,
+                'event_type': 'treasure'
             })
         
         elif event == "trap":
@@ -91,7 +96,8 @@ def make_choice():
             stats['xp'] += 2
             template_vars.update({
                 'message': "You encountered a trap!\nYou lost 10 health but gained 2 XP, you're tough!",
-                'show_choices': True
+                'show_choices': True,
+                'event_type': 'trap'
             })
 
     elif choice == 'fight':
@@ -132,6 +138,9 @@ def make_choice():
             })
 
     elif choice == 'get_help':
+        template_vars.update({
+            'event_type': 'local'
+        })
         if stats['score'] >= 10:
             stats['score'] -= 10
             if random.random() > 0.2:
@@ -169,7 +178,8 @@ def make_choice():
             player_name=player_name,
             score=stats['score'],
             xp=stats['xp'],
-            victory_type=victory_type
+            victory_type=victory_type,
+            health=stats['health']
         )
         victory_messages = {
             "PERFECT VICTORY": f"Incredible, {player_name}! You've mastered the game with style and grace!",
@@ -204,8 +214,12 @@ def make_choice():
     
     return template('game', **template_vars)
 
-@route('/static/<filename>')
+@route('/static/<filename:path>')
 def serve_static(filename):
+    # Basic security: ensure filename doesn't contain path traversal
+    if '..' in filename or filename.startswith('/'):
+        return 'Access denied', 403
+        
     # Try the ./static directory first
     response = static_file(filename, root='./static')
     if response.status_code == 404:
@@ -215,7 +229,7 @@ def serve_static(filename):
 
 @route('/start', method='POST')
 def start_game():
-    player_name = request.forms.get('player_name')
+    player_name = request.forms.get('player_name', '').strip()
     template_vars = TEMPLATE_DEFAULTS.copy()
     
     if player_name:
@@ -231,7 +245,7 @@ def start_game():
         })
     else:
         template_vars.update({
-            'message': "Please enter your name to begin.",
+            'message': "Please enter a valid name to begin.",
             'show_name_input': True
         })
     
@@ -244,7 +258,8 @@ def show_leaderboard():
 
 if __name__ == "__main__":
     try:
-        print("Starting server...", flush=True)  # Debug print
+        print("Starting server...", flush=True)
+        init_db()
         run(host='127.0.0.1', port=8000, debug=True)
     except Exception as e:
-        print(f"Error starting server: {str(e)}", flush=True)  # Debug print 
+        print(f"Error starting server: {str(e)}", flush=True)
