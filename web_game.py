@@ -1,6 +1,19 @@
-from bottle import route, run, template, static_file, request, redirect
+from bottle import route, run, template, static_file, request, redirect, response, default_app
 import random
 from database import init_db, add_to_leaderboard, get_leaderboard
+import json
+import os
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from datetime import datetime
+
+# Environment variables with defaults
+HOST = os.environ.get('HOST', '127.0.0.1')
+PORT = int(os.environ.get('PORT', 8000))
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+
+# Initialize database
+init_db()
 
 print("Starting imports...", flush=True)  # Debug print
 
@@ -256,10 +269,16 @@ def show_leaderboard():
     leaderboard_entries = get_leaderboard(10)  # Get top 10
     return template('leaderboard', entries=leaderboard_entries)
 
+@route('/health')
+def health_check():
+    return {'status': 'healthy'}
+
+# Create the application
+app = default_app()
+
 if __name__ == "__main__":
     try:
         print("Starting server...", flush=True)
-        init_db()
-        run(host='127.0.0.1', port=8000, debug=True)
+        run(host=HOST, port=PORT, debug=DEBUG)
     except Exception as e:
         print(f"Error starting server: {str(e)}", flush=True)
