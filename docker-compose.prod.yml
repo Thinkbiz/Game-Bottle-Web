@@ -2,22 +2,22 @@ version: '3.8'
 
 services:
   web:
-    build: .
+    image: charlidan/monsters-and-treasure:latest
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
-      - ./static:/app/static
-      - ./views:/app/views
-      - ./logs:/app/logs
+      - game_data:/app/data
+      - game_logs:/app/logs
+      - ./static:/app/static:ro
+      - ./views:/app/views:ro
     environment:
       - HOST=0.0.0.0
       - PORT=8000
-      - DEBUG=True
-      - WORKERS=1
+      - DEBUG=False
+      - WORKERS=2
       - TIMEOUT=120
       - KEEP_ALIVE=30
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
@@ -27,24 +27,32 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.50'
+          cpus: '0.75'
           memory: 512M
         reservations:
           cpus: '0.25'
           memory: 256M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
     networks:
       - game-network
     logging:
       driver: "json-file"
       options:
-        max-size: "10m"
-        max-file: "3"
+        max-size: "20m"
+        max-file: "5"
     stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+volumes:
+  game_data:
+  game_logs:
 
 networks:
   game-network:

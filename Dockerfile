@@ -7,12 +7,17 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0 \
-    PORT=8000
+    PORT=8000 \
+    WORKERS=1 \
+    TIMEOUT=120 \
+    KEEP_ALIVE=30
 
 # Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
+    curl \
+    tini \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first to leverage Docker cache
@@ -22,15 +27,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application
 COPY . .
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/data && \
-    chmod 777 /app/data
+# Create necessary directories
+RUN mkdir -p /app/data /app/logs && \
+    chmod 777 /app/data /app/logs
 
-# Volume for persistent data
-VOLUME ["/app/data"]
+# Volume for persistent data and logs
+VOLUME ["/app/data", "/app/logs"]
 
 # Expose the port
 EXPOSE 8000
 
+# Use tini as init system
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
 # Run the application with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "web_game:app"] 
+CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "--preload", "web_game:app"] 
