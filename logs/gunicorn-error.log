@@ -17313,3 +17313,102 @@ Final Stats - Health: 40 | Score: 105 | XP: 203
             Response: {'status': 'healthy', 'debug': True}
         
 [2025-01-14 19:40:49 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:41:19 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:41:19,802 - web_game - DEBUG - 
+            2025-01-14 19:41:19.802042
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:41:19 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:41:49 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:41:49,863 - web_game - DEBUG - 
+            2025-01-14 19:41:49.863388
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:41:49 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:42:19 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:42:19,929 - web_game - DEBUG - 
+            2025-01-14 19:42:19.929716
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:42:19 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:42:49 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:42:49,983 - web_game - DEBUG - 
+            2025-01-14 19:42:49.983233
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:42:49 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:43:20 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:43:20,030 - web_game - DEBUG - 
+            2025-01-14 19:43:20.030790
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:43:20 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:43:50 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:43:50,105 - web_game - DEBUG - 
+            2025-01-14 19:43:50.104530
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:43:50 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:44:20 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:44:20,173 - web_game - DEBUG - 
+            2025-01-14 19:44:20.173272
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:44:20 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:44:50 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:44:50,233 - web_game - DEBUG - 
+            2025-01-14 19:44:50.233219
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:44:50 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:45:20 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:45:20,310 - web_game - DEBUG - 
+            2025-01-14 19:45:20.310202
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:45:20 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:45:50 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:45:50,366 - web_game - DEBUG - 
+            2025-01-14 19:45:50.366465
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:45:50 +0000] [7] [DEBUG] Closing connection. 
+[2025-01-14 19:46:20 +0000] [7] [DEBUG] GET /health
+2025-01-14 19:46:20,448 - web_game - DEBUG - 
+            2025-01-14 19:46:20.448092
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-01-14 19:46:20 +0000] [7] [DEBUG] Closing connection. 
