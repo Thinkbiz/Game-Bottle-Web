@@ -11,9 +11,24 @@
             <p>Health: {{player_stats['health']}} | Score: {{player_stats['score']}} | XP: {{player_stats['xp']}}</p>
         </div>
         % end
+        
         <div id="game-output" class="{{get('victory_type', '').lower().replace(' ', '-')}}">
+            % if get('event_type'):
+            <div class="event-image">
+                % if event_type == 'monster':
+                <img src="/static/images/monster.png" alt="Monster" class="game-image">
+                % elif event_type == 'treasure':
+                <img src="/static/images/treasure.png" alt="Treasure" class="game-image">
+                % elif event_type == 'trap':
+                <img src="/static/images/trap.png" alt="Trap" class="game-image">
+                % elif event_type == 'local':
+                <img src="/static/images/local.png" alt="Local Helper" class="game-image">
+                % end
+            </div>
+            % end
             {{message}}
         </div>
+
         <div id="game-input">
             % if show_name_input:
                 <form action="/start" method="post">
