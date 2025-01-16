@@ -1,67 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Adventure Game</title>
-    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <div id="game-container">
-        % if player_stats:
-        <div id="stats-display">
-            <p>Health: {{player_stats['health']}} | Score: {{player_stats['score']}} | XP: {{player_stats['xp']}}</p>
-        </div>
-        % end
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            % if player_stats:
+            <div class="game-stats">
+                <span>❤️ Health: {{player_stats['health']}}</span>
+                <span>⭐️ Score: {{player_stats['score']}}</span>
+                <span>✨ XP: {{player_stats['xp']}}</span>
+            </div>
+            % end
+        </header>
         
-        <div id="game-output" class="{{get('victory_type', '').lower().replace(' ', '-')}}">
+        <main class="game-content">
             % if get('event_type'):
-            <div class="event-image">
+            <div class="mb-6 text-center">
                 % if event_type == 'monster':
-                <img src="/static/images/monster.png" alt="Monster" class="game-image">
+                <img src="/static/images/monster.png" alt="Monster" class="w-32 h-32 mx-auto">
                 % elif event_type == 'treasure':
-                <img src="/static/images/treasure.png" alt="Treasure" class="game-image">
+                <img src="/static/images/treasure.png" alt="Treasure" class="w-32 h-32 mx-auto">
                 % elif event_type == 'trap':
-                <img src="/static/images/trap.png" alt="Trap" class="game-image">
+                <img src="/static/images/trap.png" alt="Trap" class="w-32 h-32 mx-auto">
                 % elif event_type == 'local':
-                <img src="/static/images/local.png" alt="Local Helper" class="game-image">
+                <img src="/static/images/local.png" alt="Local Helper" class="w-32 h-32 mx-auto">
                 % end
             </div>
             % end
-            {{message}}
-        </div>
-
-        <div id="game-input">
-            % if show_name_input:
-                <form action="/start" method="post">
-                    <input type="text" name="player_name" placeholder="Enter your name" required>
-                    <button type="submit" class="game-button">Start Adventure</button>
-                </form>
-            % end
             
-            % if show_choices:
-                <form action="/choice" method="post">
-                    <button type="submit" name="choice" value="adventure" class="game-button">Go on Adventure</button>
-                    <button type="submit" name="choice" value="rest" class="game-button">Rest</button>
-                </form>
-            % end
+            <div class="game-message">
+                {{message}}
+            </div>
 
-            % if show_treasure_choices:
-                <form action="/choice" method="post">
-                    <button type="submit" name="choice" value="search_alone" class="game-button">Search Alone</button>
-                    <button type="submit" name="choice" value="get_help" class="game-button">Get Help (10 points)</button>
-                    <button type="submit" name="choice" value="ignore" class="game-button">Ignore</button>
+            <div class="game-options">
+                % if show_name_input:
+                <form action="/start" method="post" class="space-y-4">
+                    <input type="text" name="player_name" placeholder="Enter your name" required class="input w-full">
+                    <button type="submit" class="btn-primary w-full">Start Adventure</button>
                 </form>
-            % end
+                % end
+                
+                % if show_choices:
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+                % end
 
-            % if show_monster_choices:
-                <form action="/choice" method="post">
-                    <button type="submit" name="choice" value="fight" class="game-button">Fight</button>
-                    <button type="submit" name="choice" value="run" class="game-button">Run</button>
+                % if show_treasure_choices:
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="search_alone" class="btn-primary w-full">Search Alone</button>
+                    <button type="submit" name="choice" value="get_help" class="btn-secondary w-full">Get Help (10 points)</button>
+                    <button type="submit" name="choice" value="ignore" class="btn-secondary w-full">Ignore</button>
                 </form>
-            % end
-        </div>
-        <div id="leaderboard-link">
-            <a href="/leaderboard" class="game-button">View Leaderboard</a>
-        </div>
+                % end
+
+                % if show_monster_choices:
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="fight" class="btn-primary w-full">Fight</button>
+                    <button type="submit" name="choice" value="run" class="btn-secondary w-full">Run</button>
+                </form>
+                % end
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
     </div>
 </body>
 </html> 

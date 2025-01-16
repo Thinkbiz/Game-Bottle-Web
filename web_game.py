@@ -3,11 +3,35 @@ import random
 from database import init_db, add_to_leaderboard, get_leaderboard
 import json
 import os
-from google.oauth2 import id_token
-from google.auth.transport import requests
 from datetime import datetime
 import logging
 import sys
+from typing import Dict, Any, Optional, Union, Tuple
+from config import DEVELOPMENT_CONFIG
+
+# Game Constants
+VICTORY_TYPES = {
+    "PERFECT": "Perfect Victory",
+    "GLORIOUS": "Glorious Victory",
+    "PYRRHIC": "Pyrrhic Victory",
+    "STANDARD": "Standard Victory",
+    "DIED": "Died"
+}
+
+GAME_THRESHOLDS = {
+    "VICTORY_XP": 200,
+    "PERFECT_HEALTH": 80,
+    "PERFECT_SCORE": 50,
+    "GLORIOUS_HEALTH": 50,
+    "PYRRHIC_HEALTH": 20
+}
+
+EVENT_TYPES = {
+    "MONSTER": "monster",
+    "TREASURE": "treasure",
+    "TRAP": "trap",
+    "LOCAL": "local"
+}
 
 # Environment variables with defaults
 HOST = os.environ.get('HOST', '127.0.0.1')
@@ -25,63 +49,126 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Add request logging middleware
-def log_to_logger(fn):
-    def _log_to_logger(*args, **kwargs):
-        request_time = datetime.now()
-        actual_response = fn(*args, **kwargs)
-        logger.debug(f'''
-            {request_time}
-            Request: {request.method} {request.url}
-            Headers: {dict(request.headers)}
-            Forms: {dict(request.forms)}
-            Response: {actual_response}
-        ''')
-        return actual_response
-    return _log_to_logger
+# Default template variables
+TEMPLATE_DEFAULTS: Dict[str, Any] = {
+    'show_name_input': False,
+    'show_choices': False,
+    'show_monster_choices': False,
+    'show_treasure_choices': False,
+    'message': '',
+    'player_stats': None,
+    'event_type': None,
+    'victory_type': None
+}
 
-# Session handling
-def get_session_id():
+# Initialize player stats
+DEFAULT_STATS: Dict[str, int] = {
+    'health': 100,
+    'score': 0,
+    'xp': 0
+}
+
+def test_template_vars(template_vars: Dict[str, Any]) -> bool:
+    """Test template variables before rendering"""
+    try:
+        validate_template_vars(template_vars)
+        return True
+    except (ValueError, TypeError) as e:
+        logger.error(f"Template validation failed: {str(e)}")
+        return False
+
+def validate_template_vars(template_vars: Dict[str, Any]) -> None:
+    """Ensure all required template variables are present with correct types"""
+    required_vars = {
+        'show_name_input': bool,
+        'show_choices': bool,
+        'show_monster_choices': bool,
+        'show_treasure_choices': bool,
+        'message': str,
+        'player_stats': (dict, type(None)),
+        'event_type': (str, type(None)),
+        'victory_type': (str, type(None))
+    }
+    
+    for var, expected_type in required_vars.items():
+        if var not in template_vars:
+            raise ValueError(f"Missing required template variable: {var}")
+        if not isinstance(template_vars[var], expected_type):
+            raise TypeError(f"Invalid type for {var}: expected {expected_type}, got {type(template_vars[var])}")
+
+def error_boundary(route_func):
+    """Decorator to catch and handle all errors"""
+    def wrapper(*args, **kwargs):
+        try:
+            return route_func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Route error: {str(e)}", exc_info=True)
+            return template('game.html', 
+                          message="An error occurred. Please try again.",
+                          show_name_input=True,
+                          **TEMPLATE_DEFAULTS)
+    return wrapper
+
+def safe_template(route_func):
+    """Decorator to ensure template safety"""
+    def wrapper(*args, **kwargs):
+        try:
+            template_vars = route_func(*args, **kwargs)
+            if isinstance(template_vars, dict):
+                # Merge with defaults
+                full_vars = TEMPLATE_DEFAULTS.copy()
+                full_vars.update(template_vars)
+                # Test and validate
+                if not test_template_vars(full_vars):
+                    raise ValueError("Template validation failed")
+                return full_vars
+            return template_vars
+        except Exception as e:
+            logger.error(f"Template error: {str(e)}", exc_info=True)
+            return template('game.html', **TEMPLATE_DEFAULTS)
+    return wrapper
+
+def get_session_id() -> str:
+    """Get or create session ID"""
     session_id = request.cookies.get('session_id')
     if not session_id:
         session_id = str(random.randint(1000000, 9999999))
         response.set_cookie('session_id', session_id, path='/')
     return session_id
 
-# Game state storage - separate for each session
-game_states = {}
-
-def get_game_state():
+def get_game_state() -> Dict[str, Any]:
+    """Get current game state"""
     session_id = get_session_id()
     logger.debug(f"Getting game state for session {session_id}")
     return game_states.get(session_id, {})
 
-def save_game_state(state):
+def save_game_state(state: Dict[str, Any]) -> None:
+    """Save current game state"""
     session_id = get_session_id()
     logger.debug(f"Saving game state for session {session_id}")
     game_states[session_id] = state
 
+def check_victory_type(stats: Dict[str, int]) -> Optional[str]:
+    """Check if player has achieved victory and determine type"""
+    if stats['xp'] >= GAME_THRESHOLDS["VICTORY_XP"]:
+        if stats['health'] > GAME_THRESHOLDS["PERFECT_HEALTH"] and stats['score'] > GAME_THRESHOLDS["PERFECT_SCORE"]:
+            return VICTORY_TYPES["PERFECT"]
+        elif stats['health'] > GAME_THRESHOLDS["GLORIOUS_HEALTH"]:
+            return VICTORY_TYPES["GLORIOUS"]
+        elif stats['health'] <= GAME_THRESHOLDS["PYRRHIC_HEALTH"]:
+            return VICTORY_TYPES["PYRRHIC"]
+        else:
+            return VICTORY_TYPES["STANDARD"]
+    return None
+
 # Initialize database
 init_db()
 
-# Default template variables
-TEMPLATE_DEFAULTS = {
-    'show_name_input': False,
-    'show_choices': False,
-    'show_monster_choices': False,
-    'show_treasure_choices': False,
-    'message': '',
-    'player_stats': None
-}
-
-# Initialize player stats
-DEFAULT_STATS = {
-    'health': 100,
-    'score': 0,
-    'xp': 0
-}
+# Game state storage - separate for each session
+game_states = {}
 
 @route('/')
+@safe_template
 def game():
     logger.debug("Handling root route")
     template_vars = TEMPLATE_DEFAULTS.copy()
@@ -127,18 +214,6 @@ def start_game():
         })
     
     return template('game', **template_vars)
-
-def check_victory_type(stats):
-    if stats['xp'] >= 200:
-        if stats['health'] > 80 and stats['score'] > 50:
-            return "PERFECT VICTORY"
-        elif stats['health'] > 50:
-            return "GLORIOUS VICTORY"
-        elif stats['health'] <= 20:
-            return "PYRRHIC VICTORY"
-        else:
-            return "STANDARD VICTORY"
-    return None
 
 @route('/choice', method='POST')
 def make_choice():
