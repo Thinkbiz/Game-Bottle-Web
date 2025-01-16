@@ -167,6 +167,22 @@ init_db()
 # Game state storage - separate for each session
 game_states = {}
 
+# Add request logging middleware
+def log_to_logger(fn):
+    """Middleware to log all requests"""
+    def _log_to_logger(*args, **kwargs):
+        request_time = datetime.now()
+        actual_response = fn(*args, **kwargs)
+        logger.debug(f'''
+            {request_time}
+            Request: {request.method} {request.url}
+            Headers: {dict(request.headers)}
+            Forms: {dict(request.forms)}
+            Response: {actual_response}
+        ''')
+        return actual_response
+    return _log_to_logger
+
 @route('/')
 @safe_template
 def game():
@@ -430,7 +446,7 @@ def show_leaderboard():
 def health_check():
     return {'status': 'healthy', 'debug': DEBUG}
 
-# Create the application
+# Initialize app with middleware
 app = default_app()
 app.install(log_to_logger)
 
@@ -454,6 +470,6 @@ def error404(error):
 if __name__ == "__main__":
     try:
         logger.info("Starting server...")
-        run(host=HOST, port=PORT, debug=DEBUG)
+        run(host=HOST, port=PORT, debug=DEBUG, reloader=DEBUG)
     except Exception as e:
         logger.error(f"Error starting server: {str(e)}")
