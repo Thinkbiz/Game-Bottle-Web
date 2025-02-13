@@ -17412,3 +17412,1242 @@ Final Stats - Health: 40 | Score: 105 | XP: 203
             Response: {'status': 'healthy', 'debug': True}
         
 [2025-01-14 19:46:20 +0000] [7] [DEBUG] Closing connection. 
+[2025-02-12 20:57:35 +0000] [7] [DEBUG] Current configuration:
+  config: /app/gunicorn.conf.py
+  wsgi_app: None
+  bind: ['0.0.0.0:8000']
+  backlog: 2048
+  workers: 1
+  worker_class: sync
+  threads: 2
+  worker_connections: 1000
+  max_requests: 0
+  max_requests_jitter: 0
+  timeout: 120
+  graceful_timeout: 30
+  keepalive: 30
+  limit_request_line: 4094
+  limit_request_fields: 100
+  limit_request_field_size: 8190
+  reload: False
+  reload_engine: auto
+  reload_extra_files: []
+  spew: False
+  check_config: False
+  print_config: False
+  preload_app: True
+  sendfile: None
+  reuse_port: False
+  chdir: /app
+  daemon: False
+  raw_env: []
+  pidfile: /app/logs/gunicorn.pid
+  worker_tmp_dir: None
+  user: 0
+  group: 0
+  umask: 0
+  initgroups: False
+  tmp_upload_dir: None
+  secure_scheme_headers: {'X-FORWARDED-PROTOCOL': 'ssl', 'X-FORWARDED-PROTO': 'https', 'X-FORWARDED-SSL': 'on'}
+  forwarded_allow_ips: ['127.0.0.1']
+  accesslog: /app/logs/gunicorn-access.log
+  disable_redirect_access_to_syslog: False
+  access_log_format: %(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"
+  errorlog: /app/logs/gunicorn-error.log
+  loglevel: debug
+  capture_output: True
+  logger_class: gunicorn.glogging.Logger
+  logconfig: None
+  logconfig_dict: {}
+  logconfig_json: None
+  syslog_addr: udp://localhost:514
+  syslog: False
+  syslog_prefix: None
+  syslog_facility: user
+  enable_stdio_inheritance: False
+  statsd_host: None
+  dogstatsd_tags: 
+  statsd_prefix: 
+  proc_name: game_web
+  default_proc_name: web_game:app
+  pythonpath: None
+  paste: None
+  on_starting: <function on_starting at 0xffffa3ca2430>
+  on_reload: <function OnReload.on_reload at 0xffffa3a92700>
+  when_ready: <function WhenReady.when_ready at 0xffffa3a92820>
+  pre_fork: <function Prefork.pre_fork at 0xffffa3a92940>
+  post_fork: <function Postfork.post_fork at 0xffffa3a92a60>
+  post_worker_init: <function PostWorkerInit.post_worker_init at 0xffffa3a92b80>
+  worker_int: <function WorkerInt.worker_int at 0xffffa3a92ca0>
+  worker_abort: <function WorkerAbort.worker_abort at 0xffffa3a92dc0>
+  pre_exec: <function PreExec.pre_exec at 0xffffa3a92ee0>
+  pre_request: <function PreRequest.pre_request at 0xffffa3a8c040>
+  post_request: <function PostRequest.post_request at 0xffffa3a8c0d0>
+  child_exit: <function ChildExit.child_exit at 0xffffa3a8c1f0>
+  worker_exit: <function WorkerExit.worker_exit at 0xffffa3a8c310>
+  nworkers_changed: <function NumWorkersChanged.nworkers_changed at 0xffffa3a8c430>
+  on_exit: <function on_exit at 0xffffa3ca24c0>
+  ssl_context: <function NewSSLContext.ssl_context at 0xffffa3a8c670>
+  proxy_protocol: False
+  proxy_allow_ips: ['127.0.0.1']
+  keyfile: None
+  certfile: None
+  ssl_version: 2
+  cert_reqs: 0
+  ca_certs: None
+  suppress_ragged_eofs: True
+  do_handshake_on_connect: False
+  ciphers: None
+  raw_paste_global_conf: []
+  strip_header_spaces: False
+[2025-02-12 20:57:35 +0000] [7] [INFO] Starting gunicorn 21.2.0
+[2025-02-12 20:57:35 +0000] [7] [INFO] Starting Gunicorn server...
+[2025-02-12 20:57:35 +0000] [7] [DEBUG] Arbiter booted
+[2025-02-12 20:57:35 +0000] [7] [INFO] Listening at: http://0.0.0.0:8000 (7)
+[2025-02-12 20:57:35 +0000] [7] [INFO] Using worker: gthread
+[2025-02-12 20:57:35 +0000] [8] [INFO] Booting worker with pid: 8
+[2025-02-12 20:57:35 +0000] [7] [DEBUG] 1 workers
+[2025-02-12 20:57:39 +0000] [8] [DEBUG] GET /health
+2025-02-12 20:57:39,671 - web_game - DEBUG - 
+            2025-02-12 20:57:39.670760
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 20:57:39 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 20:58:09 +0000] [8] [DEBUG] GET /health
+2025-02-12 20:58:09,741 - web_game - DEBUG - 
+            2025-02-12 20:58:09.741128
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 20:58:09 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 20:58:39 +0000] [8] [DEBUG] GET /health
+2025-02-12 20:58:39,793 - web_game - DEBUG - 
+            2025-02-12 20:58:39.793850
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 20:58:39 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 20:59:09 +0000] [8] [DEBUG] GET /health
+2025-02-12 20:59:09,866 - web_game - DEBUG - 
+            2025-02-12 20:59:09.865763
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 20:59:09 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 20:59:39 +0000] [8] [DEBUG] GET /health
+2025-02-12 20:59:39,928 - web_game - DEBUG - 
+            2025-02-12 20:59:39.928339
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 20:59:39 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:00:09 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:00:09,998 - web_game - DEBUG - 
+            2025-02-12 21:00:09.998165
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:00:10 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:00:40 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:00:40,057 - web_game - DEBUG - 
+            2025-02-12 21:00:40.057710
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:00:40 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:01:10 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:01:10,124 - web_game - DEBUG - 
+            2025-02-12 21:01:10.124539
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:01:10 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:01:40 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:01:40,198 - web_game - DEBUG - 
+            2025-02-12 21:01:40.198356
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:01:40 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:02:10 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:02:10,250 - web_game - DEBUG - 
+            2025-02-12 21:02:10.249870
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:02:10 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:02:40 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:02:40,349 - web_game - DEBUG - 
+            2025-02-12 21:02:40.348954
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:02:40 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:03:10 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:03:10,416 - web_game - DEBUG - 
+            2025-02-12 21:03:10.416536
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:03:10 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:03:40 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:03:40,474 - web_game - DEBUG - 
+            2025-02-12 21:03:40.474202
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:03:40 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:04:10 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:04:10,554 - web_game - DEBUG - 
+            2025-02-12 21:04:10.550043
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:04:10 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:04:40 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:04:40,643 - web_game - DEBUG - 
+            2025-02-12 21:04:40.642971
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:04:40 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:05:10 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:05:10,750 - web_game - DEBUG - 
+            2025-02-12 21:05:10.749660
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:05:10 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:05:40 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:05:40,851 - web_game - DEBUG - 
+            2025-02-12 21:05:40.850700
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:05:40 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:06:10 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:06:10,926 - web_game - DEBUG - 
+            2025-02-12 21:06:10.926552
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:06:10 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:06:40 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:06:40,998 - web_game - DEBUG - 
+            2025-02-12 21:06:40.998461
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:06:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:07:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:07:11,060 - web_game - DEBUG - 
+            2025-02-12 21:07:11.060176
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:07:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:07:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:07:41,115 - web_game - DEBUG - 
+            2025-02-12 21:07:41.114612
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:07:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:08:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:08:11,227 - web_game - DEBUG - 
+            2025-02-12 21:08:11.227449
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:08:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:08:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:08:41,316 - web_game - DEBUG - 
+            2025-02-12 21:08:41.316264
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:08:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:09:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:09:11,356 - web_game - DEBUG - 
+            2025-02-12 21:09:11.356331
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:09:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:09:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:09:41,435 - web_game - DEBUG - 
+            2025-02-12 21:09:41.435189
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:09:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:10:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:10:11,475 - web_game - DEBUG - 
+            2025-02-12 21:10:11.475644
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:10:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:10:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:10:41,528 - web_game - DEBUG - 
+            2025-02-12 21:10:41.528304
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:10:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:11:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:11:11,570 - web_game - DEBUG - 
+            2025-02-12 21:11:11.570433
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:11:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:11:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:11:41,615 - web_game - DEBUG - 
+            2025-02-12 21:11:41.615421
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:11:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:12:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:12:11,662 - web_game - DEBUG - 
+            2025-02-12 21:12:11.662123
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:12:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:12:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:12:41,704 - web_game - DEBUG - 
+            2025-02-12 21:12:41.703991
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:12:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:13:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:13:11,747 - web_game - DEBUG - 
+            2025-02-12 21:13:11.747422
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:13:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:13:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:13:41,790 - web_game - DEBUG - 
+            2025-02-12 21:13:41.790479
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:13:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:14:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:14:11,848 - web_game - DEBUG - 
+            2025-02-12 21:14:11.847960
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:14:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:14:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:14:41,894 - web_game - DEBUG - 
+            2025-02-12 21:14:41.894487
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:14:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:15:11 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:15:11,949 - web_game - DEBUG - 
+            2025-02-12 21:15:11.949754
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:15:11 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:15:41 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:15:41,996 - web_game - DEBUG - 
+            2025-02-12 21:15:41.996008
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:15:41 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:16:12 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:16:12,060 - web_game - DEBUG - 
+            2025-02-12 21:16:12.059753
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:16:12 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:16:42 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:16:42,105 - web_game - DEBUG - 
+            2025-02-12 21:16:42.105697
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:16:42 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:17:11 +0000] [8] [DEBUG] GET /
+2025-02-12 21:17:11,773 - web_game - DEBUG - Handling root route
+2025-02-12 21:17:11,774 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:11,788 - web_game - DEBUG - 
+            2025-02-12 21:17:11.773379
+            Request: GET http://127.0.0.1:8000/
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'none', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y'}
+            Forms: {}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+        </header>
+        
+        <main class="game-content">
+            
+            <div class="game-message">
+                Welcome to the Adventure Game! Please enter your name to begin.
+            </div>
+
+            <div class="game-options">
+                <form action="/start" method="post" class="space-y-4">
+                    <input type="text" name="player_name" placeholder="Enter your name" required class="input w-full">
+                    <button type="submit" class="btn-primary w-full">Start Adventure</button>
+                </form>
+                
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:11 +0000] [8] [DEBUG] GET /static/css/styles.css
+2025-02-12 21:17:11,824 - web_game - DEBUG - 
+            2025-02-12 21:17:11.820371
+            Request: GET http://127.0.0.1:8000/static/css/styles.css
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Sec-Ch-Ua-Platform': '"macOS"', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': 'text/css,*/*;q=0.1', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'no-cors', 'Sec-Fetch-Dest': 'style', 'Referer': 'http://127.0.0.1:8000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {}
+            Response: <_io.BufferedReader name='/app/static/css/styles.css'>
+        
+[2025-02-12 21:17:12 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:17:12,158 - web_game - DEBUG - 
+            2025-02-12 21:17:12.158027
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:17:12 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:17:12 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:12,515 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:15 +0000] [8] [DEBUG] POST /start
+2025-02-12 21:17:15,340 - web_game - DEBUG - Starting new game for player: danny
+2025-02-12 21:17:15,340 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:15,340 - web_game - DEBUG - 
+            2025-02-12 21:17:15.339986
+            Request: POST http://127.0.0.1:8000/start
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '17', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'player_name': 'danny'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 100</span>
+                <span>⭐️ Score: 0</span>
+                <span>✨ XP: 0</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            
+            <div class="game-message">
+                Welcome, danny! Your journey begins...
+            </div>
+
+            <div class="game-options">
+                
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:15 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:15,543 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:17 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:17,440 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:17,440 - web_game - DEBUG - Processing choice: adventure
+2025-02-12 21:17:17,440 - web_game - DEBUG - Current game state: {'stats': {'health': 100, 'score': 0, 'xp': 0}, 'player_name': 'danny'}
+2025-02-12 21:17:17,440 - web_game - DEBUG - Player danny made choice: adventure
+2025-02-12 21:17:17,440 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:17,441 - web_game - DEBUG - 
+            2025-02-12 21:17:17.439852
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '16', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/start', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'adventure'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 100</span>
+                <span>⭐️ Score: 0</span>
+                <span>✨ XP: 0</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            <div class="mb-6 text-center">
+                <img src="/static/images/monster.png" alt="Monster" class="w-32 h-32 mx-auto">
+            </div>
+            
+            <div class="game-message">
+                A wild ugly Monster appears!
+            </div>
+
+            <div class="game-options">
+                
+
+
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="fight" class="btn-primary w-full">Fight</button>
+                    <button type="submit" name="choice" value="run" class="btn-secondary w-full">Run</button>
+                </form>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:17 +0000] [8] [DEBUG] GET /static/images/monster.png
+2025-02-12 21:17:17,455 - web_game - DEBUG - 
+            2025-02-12 21:17:17.453584
+            Request: GET http://127.0.0.1:8000/static/images/monster.png
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Sec-Ch-Ua-Platform': '"macOS"', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'no-cors', 'Sec-Fetch-Dest': 'image', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {}
+            Response: <_io.BufferedReader name='/app/static/images/monster.png'>
+        
+[2025-02-12 21:17:17 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:17,578 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:19 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:19,818 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:19,818 - web_game - DEBUG - Processing choice: fight
+2025-02-12 21:17:19,819 - web_game - DEBUG - Current game state: {'stats': {'health': 100, 'score': 0, 'xp': 0}, 'player_name': 'danny'}
+2025-02-12 21:17:19,819 - web_game - DEBUG - Player danny made choice: fight
+2025-02-12 21:17:19,819 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:19,819 - web_game - DEBUG - 
+            2025-02-12 21:17:19.818372
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '12', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'fight'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 100</span>
+                <span>⭐️ Score: 20</span>
+                <span>✨ XP: 20</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            
+            <div class="game-message">
+                You defeated the monster!
+You gained 20 points and a whopping 20 XP!
+            </div>
+
+            <div class="game-options">
+                
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:19 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:19,941 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:22 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:22,276 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:22,276 - web_game - DEBUG - Processing choice: adventure
+2025-02-12 21:17:22,277 - web_game - DEBUG - Current game state: {'stats': {'health': 100, 'score': 20, 'xp': 20}, 'player_name': 'danny'}
+2025-02-12 21:17:22,277 - web_game - DEBUG - Player danny made choice: adventure
+2025-02-12 21:17:22,277 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:22,277 - web_game - DEBUG - 
+            2025-02-12 21:17:22.276234
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '16', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'adventure'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 90</span>
+                <span>⭐️ Score: 20</span>
+                <span>✨ XP: 22</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            <div class="mb-6 text-center">
+                <img src="/static/images/trap.png" alt="Trap" class="w-32 h-32 mx-auto">
+            </div>
+            
+            <div class="game-message">
+                You encountered a trap!
+You lost 10 health but gained 2 XP, you&#039;re tough!
+            </div>
+
+            <div class="game-options">
+                
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:22 +0000] [8] [DEBUG] GET /static/images/trap.png
+2025-02-12 21:17:22,286 - web_game - DEBUG - 
+            2025-02-12 21:17:22.286183
+            Request: GET http://127.0.0.1:8000/static/images/trap.png
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Sec-Ch-Ua-Platform': '"macOS"', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'no-cors', 'Sec-Fetch-Dest': 'image', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {}
+            Response: <_io.BufferedReader name='/app/static/images/trap.png'>
+        
+[2025-02-12 21:17:22 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:22,408 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:23 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:23,526 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:23,527 - web_game - DEBUG - Processing choice: adventure
+2025-02-12 21:17:23,527 - web_game - DEBUG - Current game state: {'stats': {'health': 90, 'score': 20, 'xp': 22}, 'player_name': 'danny'}
+2025-02-12 21:17:23,528 - web_game - DEBUG - Player danny made choice: adventure
+2025-02-12 21:17:23,528 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:23,529 - web_game - DEBUG - 
+            2025-02-12 21:17:23.526799
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '16', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'adventure'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 80</span>
+                <span>⭐️ Score: 20</span>
+                <span>✨ XP: 24</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            <div class="mb-6 text-center">
+                <img src="/static/images/trap.png" alt="Trap" class="w-32 h-32 mx-auto">
+            </div>
+            
+            <div class="game-message">
+                You encountered a trap!
+You lost 10 health but gained 2 XP, you&#039;re tough!
+            </div>
+
+            <div class="game-options">
+                
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:23 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:23,658 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:25 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:25,363 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:25,363 - web_game - DEBUG - Processing choice: adventure
+2025-02-12 21:17:25,363 - web_game - DEBUG - Current game state: {'stats': {'health': 80, 'score': 20, 'xp': 24}, 'player_name': 'danny'}
+2025-02-12 21:17:25,363 - web_game - DEBUG - Player danny made choice: adventure
+2025-02-12 21:17:25,364 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:25,364 - web_game - DEBUG - 
+            2025-02-12 21:17:25.363251
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '16', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'adventure'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 80</span>
+                <span>⭐️ Score: 20</span>
+                <span>✨ XP: 24</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            <div class="mb-6 text-center">
+                <img src="/static/images/monster.png" alt="Monster" class="w-32 h-32 mx-auto">
+            </div>
+            
+            <div class="game-message">
+                A wild ugly Monster appears!
+            </div>
+
+            <div class="game-options">
+                
+
+
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="fight" class="btn-primary w-full">Fight</button>
+                    <button type="submit" name="choice" value="run" class="btn-secondary w-full">Run</button>
+                </form>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:25 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:25,493 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:26 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:26,495 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:26,495 - web_game - DEBUG - Processing choice: fight
+2025-02-12 21:17:26,495 - web_game - DEBUG - Current game state: {'stats': {'health': 80, 'score': 20, 'xp': 24}, 'player_name': 'danny'}
+2025-02-12 21:17:26,495 - web_game - DEBUG - Player danny made choice: fight
+2025-02-12 21:17:26,495 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:26,496 - web_game - DEBUG - 
+            2025-02-12 21:17:26.495241
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '12', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'fight'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 60</span>
+                <span>⭐️ Score: 20</span>
+                <span>✨ XP: 29</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            
+            <div class="game-message">
+                The monster hurt you!
+You lost 20 health but gained 5 XP, you&#039;re tough!
+            </div>
+
+            <div class="game-options">
+                
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:26 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:26,637 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:27 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:27,684 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:27,684 - web_game - DEBUG - Processing choice: adventure
+2025-02-12 21:17:27,684 - web_game - DEBUG - Current game state: {'stats': {'health': 60, 'score': 20, 'xp': 29}, 'player_name': 'danny'}
+2025-02-12 21:17:27,684 - web_game - DEBUG - Player danny made choice: adventure
+2025-02-12 21:17:27,684 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:27,685 - web_game - DEBUG - 
+            2025-02-12 21:17:27.684116
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '16', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'adventure'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 50</span>
+                <span>⭐️ Score: 20</span>
+                <span>✨ XP: 31</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            <div class="mb-6 text-center">
+                <img src="/static/images/trap.png" alt="Trap" class="w-32 h-32 mx-auto">
+            </div>
+            
+            <div class="game-message">
+                You encountered a trap!
+You lost 10 health but gained 2 XP, you&#039;re tough!
+            </div>
+
+            <div class="game-options">
+                
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:27 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:27,887 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:29 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:29,160 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:29,160 - web_game - DEBUG - Processing choice: adventure
+2025-02-12 21:17:29,160 - web_game - DEBUG - Current game state: {'stats': {'health': 50, 'score': 20, 'xp': 31}, 'player_name': 'danny'}
+2025-02-12 21:17:29,160 - web_game - DEBUG - Player danny made choice: adventure
+2025-02-12 21:17:29,160 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:29,160 - web_game - DEBUG - 
+            2025-02-12 21:17:29.159942
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '16', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'adventure'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 40</span>
+                <span>⭐️ Score: 20</span>
+                <span>✨ XP: 33</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            <div class="mb-6 text-center">
+                <img src="/static/images/trap.png" alt="Trap" class="w-32 h-32 mx-auto">
+            </div>
+            
+            <div class="game-message">
+                You encountered a trap!
+You lost 10 health but gained 2 XP, you&#039;re tough!
+            </div>
+
+            <div class="game-options">
+                
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:29 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:29,282 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:30 +0000] [8] [DEBUG] POST /choice
+2025-02-12 21:17:30,495 - web_game - DEBUG - Getting game state for session 2726631
+2025-02-12 21:17:30,495 - web_game - DEBUG - Processing choice: rest
+2025-02-12 21:17:30,495 - web_game - DEBUG - Current game state: {'stats': {'health': 40, 'score': 20, 'xp': 33}, 'player_name': 'danny'}
+2025-02-12 21:17:30,495 - web_game - DEBUG - Player danny made choice: rest
+2025-02-12 21:17:30,496 - web_game - DEBUG - Saving game state for session 2726631
+2025-02-12 21:17:30,496 - web_game - DEBUG - 
+            2025-02-12 21:17:30.495275
+            Request: POST http://127.0.0.1:8000/choice
+            Headers: {'Host': '127.0.0.1:8000', 'Connection': 'keep-alive', 'Content-Length': '11', 'Cache-Control': 'max-age=0', 'Sec-Ch-Ua': '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"', 'Sec-Ch-Ua-Mobile': '?0', 'Sec-Ch-Ua-Platform': '"macOS"', 'Origin': 'http://127.0.0.1:8000', 'Content-Type': 'application/x-www-form-urlencoded', 'Upgrade-Insecure-Requests': '1', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36', 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-User': '?1', 'Sec-Fetch-Dest': 'document', 'Referer': 'http://127.0.0.1:8000/choice', 'Accept-Encoding': 'gzip, deflate, br, zstd', 'Accept-Language': 'en-US,en;q=0.9', 'Cookie': 'session=eyJfZnJlc2giOmZhbHNlLCJ1c2VyX2lkIjoxfQ.Z6YsGA.E6enIPPIwKyv-5V6vCvnNR7TV7Y; session_id=2726631'}
+            Forms: {'choice': 'rest'}
+            Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            <div class="game-stats">
+                <span>❤️ Health: 60</span>
+                <span>⭐️ Score: 10</span>
+                <span>✨ XP: 33</span>
+            </div>
+        </header>
+        
+        <main class="game-content">
+            
+            <div class="game-message">
+                You rested and gained 20 health at the cost of 10 score points.
+            </div>
+
+            <div class="game-options">
+                
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+
+
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
+    </div>
+</body>
+</html> 
+        
+[2025-02-12 21:17:30 +0000] [8] [DEBUG] GET /favicon.ico
+2025-02-12 21:17:30,624 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-12 21:17:42 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:17:42,223 - web_game - DEBUG - 
+            2025-02-12 21:17:42.222987
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:17:42 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:18:12 +0000] [8] [DEBUG] GET /health
+2025-02-12 21:18:12,272 - web_game - DEBUG - 
+            2025-02-12 21:18:12.272812
+            Request: GET http://localhost:8000/health
+            Headers: {'Host': 'localhost:8000', 'User-Agent': 'curl/7.88.1', 'Accept': '*/*'}
+            Forms: {}
+            Response: {'status': 'healthy', 'debug': True}
+        
+[2025-02-12 21:18:12 +0000] [8] [DEBUG] Closing connection. 
+[2025-02-12 21:18:28 +0000] [7] [INFO] Handling signal: term
+[2025-02-12 21:18:28 +0000] [8] [INFO] Worker exiting (pid: 8)
+[2025-02-12 21:18:28 +0000] [7] [INFO] Shutting down: Master
+[2025-02-12 21:18:28 +0000] [7] [INFO] Shutting down Gunicorn server...
+[2025-02-13 20:26:50 +0000] [7] [DEBUG] Current configuration:
+  config: ./gunicorn.conf.py
+  wsgi_app: None
+  bind: ['0.0.0.0:8000']
+  backlog: 2048
+  workers: 4
+  worker_class: sync
+  threads: 2
+  worker_connections: 1000
+  max_requests: 0
+  max_requests_jitter: 0
+  timeout: 120
+  graceful_timeout: 30
+  keepalive: 30
+  limit_request_line: 4094
+  limit_request_fields: 100
+  limit_request_field_size: 8190
+  reload: False
+  reload_engine: auto
+  reload_extra_files: []
+  spew: False
+  check_config: False
+  print_config: False
+  preload_app: False
+  sendfile: None
+  reuse_port: False
+  chdir: /app
+  daemon: False
+  raw_env: []
+  pidfile: /app/logs/gunicorn.pid
+  worker_tmp_dir: None
+  user: 0
+  group: 0
+  umask: 0
+  initgroups: False
+  tmp_upload_dir: None
+  secure_scheme_headers: {'X-FORWARDED-PROTOCOL': 'ssl', 'X-FORWARDED-PROTO': 'https', 'X-FORWARDED-SSL': 'on'}
+  forwarded_allow_ips: ['127.0.0.1']
+  accesslog: /app/logs/gunicorn-access.log
+  disable_redirect_access_to_syslog: False
+  access_log_format: %(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"
+  errorlog: /app/logs/gunicorn-error.log
+  loglevel: debug
+  capture_output: True
+  logger_class: gunicorn.glogging.Logger
+  logconfig: None
+  logconfig_dict: {}
+  logconfig_json: None
+  syslog_addr: udp://localhost:514
+  syslog: False
+  syslog_prefix: None
+  syslog_facility: user
+  enable_stdio_inheritance: False
+  statsd_host: None
+  dogstatsd_tags: 
+  statsd_prefix: 
+  proc_name: game_web
+  default_proc_name: web_game:app
+  pythonpath: None
+  paste: None
+  on_starting: <function on_starting at 0xffffa1122430>
+  on_reload: <function OnReload.on_reload at 0xffffa0ab2700>
+  when_ready: <function WhenReady.when_ready at 0xffffa0ab2820>
+  pre_fork: <function Prefork.pre_fork at 0xffffa0ab2940>
+  post_fork: <function Postfork.post_fork at 0xffffa0ab2a60>
+  post_worker_init: <function PostWorkerInit.post_worker_init at 0xffffa0ab2b80>
+  worker_int: <function WorkerInt.worker_int at 0xffffa0ab2ca0>
+  worker_abort: <function WorkerAbort.worker_abort at 0xffffa0ab2dc0>
+  pre_exec: <function PreExec.pre_exec at 0xffffa0ab2ee0>
+  pre_request: <function PreRequest.pre_request at 0xffffa0aac040>
+  post_request: <function PostRequest.post_request at 0xffffa0aac0d0>
+  child_exit: <function ChildExit.child_exit at 0xffffa0aac1f0>
+  worker_exit: <function WorkerExit.worker_exit at 0xffffa0aac310>
+  nworkers_changed: <function NumWorkersChanged.nworkers_changed at 0xffffa0aac430>
+  on_exit: <function on_exit at 0xffffa11224c0>
+  ssl_context: <function NewSSLContext.ssl_context at 0xffffa0aac670>
+  proxy_protocol: False
+  proxy_allow_ips: ['127.0.0.1']
+  keyfile: None
+  certfile: None
+  ssl_version: 2
+  cert_reqs: 0
+  ca_certs: None
+  suppress_ragged_eofs: True
+  do_handshake_on_connect: False
+  ciphers: None
+  raw_paste_global_conf: []
+  strip_header_spaces: False
+[2025-02-13 20:26:50 +0000] [7] [INFO] Starting gunicorn 21.2.0
+[2025-02-13 20:26:50 +0000] [7] [INFO] Starting Gunicorn server...
+[2025-02-13 20:26:50 +0000] [7] [DEBUG] Arbiter booted
+[2025-02-13 20:26:50 +0000] [7] [INFO] Listening at: http://0.0.0.0:8000 (7)
+[2025-02-13 20:26:50 +0000] [7] [INFO] Using worker: gthread
+[2025-02-13 20:26:50 +0000] [8] [INFO] Booting worker with pid: 8
+[2025-02-13 20:26:50 +0000] [9] [INFO] Booting worker with pid: 9
+[2025-02-13 20:26:50 +0000] [10] [INFO] Booting worker with pid: 10
+[2025-02-13 20:26:50 +0000] [11] [INFO] Booting worker with pid: 11
+[2025-02-13 20:26:50 +0000] [7] [DEBUG] 4 workers
+[2025-02-13 20:27:21 +0000] [11] [DEBUG] GET /
+[2025-02-13 20:27:21 +0000] [11] [DEBUG] GET /static/css/styles.css
+[2025-02-13 20:27:22 +0000] [11] [DEBUG] GET /favicon.ico
+2025-02-13 20:27:22,009 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-13 20:27:45 +0000] [11] [DEBUG] GET /leaderboard
+[2025-02-13 20:27:45 +0000] [11] [DEBUG] GET /favicon.ico
+2025-02-13 20:27:45,878 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-13 20:27:48 +0000] [11] [DEBUG] GET /
+[2025-02-13 20:27:49 +0000] [11] [DEBUG] GET /favicon.ico
+2025-02-13 20:27:49,039 - web_game - ERROR - Page not found: (404, "Not found: '/favicon.ico'")
+<h1>Critical error while processing request: /favicon.ico</h1>[2025-02-13 20:28:51 +0000] [10] [DEBUG] Closing connection. 
