@@ -58,7 +58,8 @@ TEMPLATE_DEFAULTS: Dict[str, Any] = {
     'message': '',
     'player_stats': None,
     'event_type': None,
-    'victory_type': None
+    'victory_type': None,
+    'previous_stats': None
 }
 
 # Initialize player stats
@@ -140,12 +141,26 @@ def get_game_state() -> Dict[str, Any]:
     """Get current game state"""
     session_id = get_session_id()
     logger.debug(f"Getting game state for session {session_id}")
-    return game_states.get(session_id, {})
+    state = game_states.get(session_id, {})
+    
+    # Initialize previous_stats if not present
+    if 'stats' in state and 'previous_stats' not in state:
+        state['previous_stats'] = state['stats'].copy()
+    return state
 
 def save_game_state(state: Dict[str, Any]) -> None:
     """Save current game state"""
     session_id = get_session_id()
     logger.debug(f"Saving game state for session {session_id}")
+    
+    # Store current stats as previous before updating
+    if 'stats' in state:
+        current_state = game_states.get(session_id, {})
+        if 'stats' in current_state:
+            state['previous_stats'] = current_state['stats'].copy()
+        else:
+            state['previous_stats'] = state['stats'].copy()
+    
     game_states[session_id] = state
 
 def check_victory_type(stats: Dict[str, int]) -> Optional[str]:
@@ -250,6 +265,7 @@ def make_choice():
             
         template_vars = TEMPLATE_DEFAULTS.copy()
         stats = game_state['stats']
+        previous_stats = game_state.get('previous_stats', stats.copy())
         player_name = game_state.get('player_name', 'Adventurer')
         
         logger.debug(f"Player {player_name} made choice: {choice}")
@@ -302,20 +318,23 @@ def make_choice():
                 stats['xp'] += 20
                 template_vars.update({
                     'message': "You defeated the monster!\nYou gained 20 points and a whopping 20 XP!",
-                    'show_choices': True
+                    'show_choices': True,
+                    'event_type': 'combat_victory'
                 })
             else:
                 stats['health'] -= 20
                 stats['xp'] += 5
                 template_vars.update({
                     'message': "The monster hurt you!\nYou lost 20 health but gained 5 XP, you're tough!",
-                    'show_choices': True
+                    'show_choices': True,
+                    'event_type': 'combat_defeat'
                 })
 
         elif choice == 'run':
             template_vars.update({
                 'message': "You ran away safely! Nothing ventured and nothing gained!",
-                'show_choices': True
+                'show_choices': True,
+                'event_type': 'combat_escape'
             })
 
         elif choice == 'search_alone':
@@ -369,6 +388,7 @@ def make_choice():
         
         # Add stats to template variables
         template_vars['player_stats'] = stats
+        template_vars['previous_stats'] = previous_stats
         
         # Check for win condition before checking for game over
         victory_type = check_victory_type(stats)
@@ -445,6 +465,10 @@ def show_leaderboard():
 @route('/health')
 def health_check():
     return {'status': 'healthy', 'debug': DEBUG}
+
+@route('/favicon.ico')
+def get_favicon():
+    return static_file('favicon.png', root='./static/favicon')
 
 # Initialize app with middleware
 app = default_app()
