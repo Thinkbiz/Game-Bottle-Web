@@ -148,7 +148,9 @@
                 % if event_type == 'monster':
                 <img src="/static/images/monster.png" alt="Monster" class="game-image">
                 % elif event_type == 'treasure':
-                <img src="/static/images/treasure.png" alt="Treasure" class="game-image">
+                <img src="/static/images/treasure_rumor.png" alt="Treasure Rumor" class="game-image">
+                % elif event_type == 'treasure_found':
+                <img src="/static/images/treasure_found.png" alt="Treasure Found" class="game-image">
                 % elif event_type == 'trap':
                 <img src="/static/images/trap.png" alt="Trap" class="game-image">
                 % elif event_type == 'local':
@@ -159,6 +161,34 @@
                 <img src="/static/images/combat/defeat.png" alt="Combat Defeat" class="game-image combat-outcome">
                 % elif event_type == 'combat_escape':
                 <img src="/static/images/combat/escape.png" alt="Combat Escape" class="game-image combat-outcome">
+                % elif event_type == 'rest':
+                <img src="/static/images/states/rest.png" alt="Resting" class="game-image">
+                % elif event_type == 'rest_failed':
+                <img src="/static/images/states/rest_failed.png" alt="Rest Failed" class="game-image">
+                % elif event_type == 'welcome':
+                <img src="/static/images/states/welcome.png" alt="Welcome" class="game-image">
+                % elif event_type == 'journey_begin':
+                <img src="/static/images/states/journey_begin.png" alt="Journey Begins" class="game-image">
+                % elif event_type == 'adventure_start':
+                <img src="/static/images/states/adventure_start.png" alt="Adventure Starts" class="game-image">
+                % elif event_type == 'treasure_not_found':
+                <img src="/static/images/states/treasure_not_found.png" alt="Treasure Not Found" class="game-image">
+                % elif event_type == 'treasure_help_failed':
+                <img src="/static/images/states/treasure_help_failed.png" alt="Treasure Help Failed" class="game-image">
+                % elif event_type == 'treasure_ignored':
+                <img src="/static/images/states/treasure_ignored.png" alt="Treasure Ignored" class="game-image">
+                % elif event_type == 'local_unavailable':
+                <img src="/static/images/states/local_unavailable.png" alt="Local Unavailable" class="game-image">
+                % elif event_type == 'victory_perfect':
+                <img src="/static/images/states/victory_perfect.png" alt="Perfect Victory" class="game-image">
+                % elif event_type == 'victory_glorious':
+                <img src="/static/images/states/victory_glorious.png" alt="Glorious Victory" class="game-image">
+                % elif event_type == 'victory_pyrrhic':
+                <img src="/static/images/states/victory_pyrrhic.png" alt="Pyrrhic Victory" class="game-image">
+                % elif event_type == 'victory_standard':
+                <img src="/static/images/states/victory_standard.png" alt="Standard Victory" class="game-image">
+                % elif event_type == 'gameover':
+                <img src="/static/images/states/gameover.png" alt="Game Over" class="game-image">
                 % end
             </div>
             % end
@@ -175,9 +205,16 @@
                 </form>
                 % end
                 
+                % if show_restart:
+                <form action="/start" method="post">
+                    <input type="hidden" name="player_name" value="{{player_name}}">
+                    <button type="submit" class="btn-primary w-full">Restart Adventure</button>
+                </form>
+                % end
+                
                 % if show_choices:
                 <form action="/choice" method="post" class="space-y-3">
-                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Go on Adventure</button>
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Continue Adventure</button>
                     <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
                 </form>
                 % end

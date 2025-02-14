@@ -29,8 +29,23 @@ GAME_THRESHOLDS = {
 EVENT_TYPES = {
     "MONSTER": "monster",
     "TREASURE": "treasure",
+    "TREASURE_FOUND": "treasure_found",
     "TRAP": "trap",
-    "LOCAL": "local"
+    "LOCAL": "local",
+    "REST": "rest",
+    "WELCOME": "welcome",
+    "GAMEOVER": "gameover",
+    "JOURNEY_BEGIN": "journey_begin",
+    "ADVENTURE_START": "adventure_start",
+    "TREASURE_NOT_FOUND": "treasure_not_found",
+    "TREASURE_HELP_FAILED": "treasure_help_failed",
+    "TREASURE_IGNORED": "treasure_ignored",
+    "VICTORY_PERFECT": "victory_perfect",
+    "VICTORY_GLORIOUS": "victory_glorious",
+    "VICTORY_PYRRHIC": "victory_pyrrhic",
+    "VICTORY_STANDARD": "victory_standard",
+    "REST_FAILED": "rest_failed",
+    "LOCAL_UNAVAILABLE": "local_unavailable"
 }
 
 # Environment variables with defaults
@@ -55,11 +70,13 @@ TEMPLATE_DEFAULTS: Dict[str, Any] = {
     'show_choices': False,
     'show_monster_choices': False,
     'show_treasure_choices': False,
+    'show_restart': False,
     'message': '',
     'player_stats': None,
     'event_type': None,
     'victory_type': None,
-    'previous_stats': None
+    'previous_stats': None,
+    'player_name': None
 }
 
 # Initialize player stats
@@ -85,10 +102,12 @@ def validate_template_vars(template_vars: Dict[str, Any]) -> None:
         'show_choices': bool,
         'show_monster_choices': bool,
         'show_treasure_choices': bool,
+        'show_restart': bool,
         'message': str,
         'player_stats': (dict, type(None)),
         'event_type': (str, type(None)),
-        'victory_type': (str, type(None))
+        'victory_type': (str, type(None)),
+        'player_name': (str, type(None))
     }
     
     for var, expected_type in required_vars.items():
@@ -207,14 +226,15 @@ def game():
     
     if game_state.get('player_name'):
         template_vars.update({
-            'message': f"Welcome back, {game_state['player_name']}!",
+            'message': f"Welcome back, {game_state['player_name']}!\nYour epic quest continues! What challenges await you today?",
             'show_choices': True,
             'player_stats': game_state.get('stats')
         })
     else:
         template_vars.update({
-            'message': "Welcome to the Adventure Game! Please enter your name to begin.",
-            'show_name_input': True
+            'message': "Welcome to the Adventure Game! A world of mystery and excitement awaits!\nDare you enter this stupidly cute realm of monsters and treasures?\nPlease enter your name, brave soul, to begin your journey!",
+            'show_name_input': True,
+            'event_type': 'welcome'
         })
     
     return template('game', **template_vars)
@@ -233,10 +253,11 @@ def start_game():
         save_game_state(game_state)
         
         template_vars.update({
-            'message': f"Welcome, {player_name}! Your journey begins...",
+            'message': f"Hail, {player_name}! Your journey into the unknown begins...\nWhat treasures will you find? What monsters will you face?\nThe path ahead is yours to choose, brave adventurer!",
             'show_choices': True,
             'player_name': player_name,
-            'player_stats': game_state['stats']
+            'player_stats': game_state['stats'],
+            'event_type': EVENT_TYPES["JOURNEY_BEGIN"]
         })
     else:
         template_vars.update({
@@ -272,18 +293,20 @@ def make_choice():
         
         if choice == 'rest':
             if stats['score'] >= 10:
-                health_gain = min(20, 100 - stats['health'])  # Cap health at 100
-                score_cost = min(10, health_gain)  # Only deduct what was actually healed
+                health_gain = min(20, 100 - stats['health'])
+                score_cost = min(10, health_gain)
                 stats['health'] += health_gain
                 stats['score'] -= score_cost
                 template_vars.update({
-                    'message': f"You rested and gained {health_gain} health at the cost of {score_cost} score points.",
-                    'show_choices': True
+                    'message': f"You find a cozy spot to rest and recover...\nThe peaceful moment restores {health_gain} health at the cost of {score_cost} score points.\nSometimes the wisest action is to take care of yourself buddy!",
+                    'show_choices': True,
+                    'event_type': EVENT_TYPES["REST"]
                 })
             else:
                 template_vars.update({
-                    'message': "You don't have enough score points to rest (need 10 points).",
-                    'show_choices': True
+                    'message': "You search for a place to rest, but alas!\nYou need at least 10 score points to afford a safe resting spot.\nPerhaps some adventure will fill your score points jar?",
+                    'show_choices': True,
+                    'event_type': EVENT_TYPES["REST_FAILED"]
                 })
         
         elif choice == 'adventure':
@@ -291,25 +314,25 @@ def make_choice():
             
             if event == "monster":
                 template_vars.update({
-                    'message': "A wild ugly Monster appears!",
+                    'message': "A wild ugly Monster appears!\nWhat will you do now, brave adventurer? It's fight or flight!",
                     'show_monster_choices': True,
-                    'event_type': 'monster'
+                    'event_type': EVENT_TYPES["MONSTER"]
                 })
             
             elif event == "treasure":
                 template_vars.update({
-                    'message': "You have learned about a treasure chest from a local in town!",
+                    'message': "You have learned about a treasure chest from a local in town!\n\nDo you want to maximize your XP and search alone?\nOr get help from a local and earn all the points but less XP (costs 10 scorepoints)?\nOr perhaps play it silly and completely ignore the treasure?",
                     'show_treasure_choices': True,
-                    'event_type': 'treasure'
+                    'event_type': EVENT_TYPES["TREASURE"]
                 })
             
             elif event == "trap":
                 stats['health'] -= 10
                 stats['xp'] += 2
                 template_vars.update({
-                    'message': "You encountered a trap!\nYou lost 10 health but gained 2 XP, you're tough!",
+                    'message': "Oh no! You've stumbled into a cleverly hidden trap!\nYou lost 10 health but gained 2 XP - you're getting tougher with every mishap!",
                     'show_choices': True,
-                    'event_type': 'trap'
+                    'event_type': EVENT_TYPES["TRAP"]
                 })
 
         elif choice == 'fight':
@@ -317,7 +340,7 @@ def make_choice():
                 stats['score'] += 20
                 stats['xp'] += 20
                 template_vars.update({
-                    'message': "You defeated the monster!\nYou gained 20 points and a whopping 20 XP!",
+                    'message': "With courage in your heart and steel in your hand, you face the monster head-on...\nVICTORY! The monster falls before your might!\nYou gained 20 score points and a whopping 20 XP for your bravery!",
                     'show_choices': True,
                     'event_type': 'combat_victory'
                 })
@@ -325,14 +348,14 @@ def make_choice():
                 stats['health'] -= 20
                 stats['xp'] += 5
                 template_vars.update({
-                    'message': "The monster hurt you!\nYou lost 20 health but gained 5 XP, you're tough!",
+                    'message': "Despite your bravery, the monster proves too strong!\nYou lost 20 health, but gained 5 XP - every battle makes you stronger!\nPerhaps next time victory will be yours!",
                     'show_choices': True,
                     'event_type': 'combat_defeat'
                 })
 
         elif choice == 'run':
             template_vars.update({
-                'message': "You ran away safely! Nothing ventured and nothing gained!",
+                'message': "Using your quick wit and quicker feet, you make a strategic retreat!\nSometimes living to fight another day is the wisest choice.\nNothing ventured and nothing gained, but nothing lost either! As Dr honeysnow used to say.",
                 'show_choices': True,
                 'event_type': 'combat_escape'
             })
@@ -342,19 +365,21 @@ def make_choice():
                 stats['score'] += 25
                 stats['xp'] += 25
                 template_vars.update({
-                    'message': "You found the treasure by yourself! You gained 25 points and 25 XP!",
-                    'show_choices': True
+                    'message': "You found the treasure by yourself! You're amazing bucko!\nYou gained 25 score points and a whopping 25 XP!",
+                    'show_choices': True,
+                    'event_type': EVENT_TYPES["TREASURE_FOUND"]
                 })
             else:
                 stats['xp'] += 3
                 template_vars.update({
-                    'message': "Despite searching, you couldn't find the treasure... But you gained 3 XP for trying!",
-                    'show_choices': True
+                    'message': "Despite your valiant efforts, you couldn't find the treasure...\nBut at least you gained 3 XP for trying! Never give up!",
+                    'show_choices': True,
+                    'event_type': EVENT_TYPES["TREASURE_NOT_FOUND"]
                 })
 
         elif choice == 'get_help':
             template_vars.update({
-                'event_type': 'local'
+                'event_type': EVENT_TYPES["LOCAL"]
             })
             if stats['score'] >= 10:
                 stats['score'] -= 10
@@ -362,24 +387,28 @@ def make_choice():
                     stats['score'] += 25
                     stats['xp'] += 10
                     template_vars.update({
-                        'message': "With the local's help, you found the treasure! You gained 25 points and 10 XP!",
-                        'show_choices': True
+                        'message': "With the local's help, your willingness to pay, and a little luck, you found the treasure!\nYou gained 25 score points and 10 XP!",
+                        'show_choices': True,
+                        'event_type': EVENT_TYPES["TREASURE_FOUND"]
                     })
                 else:
                     template_vars.update({
-                        'message': "Despite the local's help, you couldn't find the treasure... And you lost 10 points!",
-                        'show_choices': True
+                        'message': "Despite the local's help, you couldn't find the treasure...\nDon't you feel silly after paying 10 score points? At least you learned a valuable lesson!",
+                        'show_choices': True,
+                        'event_type': EVENT_TYPES["TREASURE_HELP_FAILED"]
                     })
             else:
                 template_vars.update({
-                    'message': "You don't have enough points to get help (need 10 points).",
-                    'show_choices': True
+                    'message': "You don't have enough points to get help (need 10 points).\nPerhaps try searching alone or come back when you're score pointsricher!",
+                    'show_choices': True,
+                    'event_type': EVENT_TYPES["LOCAL_UNAVAILABLE"]
                 })
 
         elif choice == 'ignore':
             template_vars.update({
-                'message': "You decided to ignore the treasure and move on.",
-                'show_choices': True
+                'message': "You decided to ignore the treasure and move on.\nSometimes the real treasure is the adventures we choose not to undertake!",
+                'show_choices': True,
+                'event_type': EVENT_TYPES["TREASURE_IGNORED"]
             })
 
         # Save the updated game state
@@ -393,6 +422,13 @@ def make_choice():
         # Check for win condition before checking for game over
         victory_type = check_victory_type(stats)
         if victory_type:
+            # Map victory types to event types
+            victory_event_types = {
+                "Perfect Victory": EVENT_TYPES["VICTORY_PERFECT"],
+                "Glorious Victory": EVENT_TYPES["VICTORY_GLORIOUS"],
+                "Pyrrhic Victory": EVENT_TYPES["VICTORY_PYRRHIC"],
+                "Standard Victory": EVENT_TYPES["VICTORY_STANDARD"]
+            }
             # Add to leaderboard when victory is achieved
             add_to_leaderboard(
                 player_name=player_name,
@@ -402,13 +438,14 @@ def make_choice():
                 health=stats['health']
             )
             victory_messages = {
-                "PERFECT VICTORY": f"Incredible, {player_name}! You've mastered the game with style and grace!",
-                "GLORIOUS VICTORY": f"Well done, {player_name}! A truly heroic victory!",
-                "PYRRHIC VICTORY": f"Against all odds, {player_name}, you've achieved victory at great cost!",
-                "STANDARD VICTORY": f"Congratulations, {player_name}! You've mastered the game!"
+                "PERFECT VICTORY": f"Incredible, {player_name}! You've mastered the game with style and grace!\nYour health is outstanding, your score is magnificent, and your experience is unmatched!\nYou are truly a legendary adventurer!",
+                "GLORIOUS VICTORY": f"Well done, {player_name}! A truly heroic victory!\nYou've maintained your health admirably while gathering the experience needed to triumph!\nThe bards will sing tales of your journey!",
+                "PYRRHIC VICTORY": f"Against all odds, {player_name}, you've achieved victory at great cost!\nThough your health has suffered greatly, your determination never wavered!\nA hard-won victory is still a victory!",
+                "STANDARD VICTORY": f"Congratulations, {player_name}! You've mastered the game!\nThrough careful balance of risk and reward, you've achieved your goal!\nMay your future adventures be just as successful!"
             }
             template_vars.update({
                 'victory_type': victory_type,
+                'event_type': victory_event_types.get(victory_type),
                 'message': f"\n{victory_type}!\n{victory_messages[victory_type]}\n"
                           f"Final Stats - Health: {stats['health']} | Score: {stats['score']} | XP: {stats['xp']}",
                 'show_name_input': True  # Allow restart
@@ -419,8 +456,14 @@ def make_choice():
         # Check for game over
         if stats['health'] <= 0:
             template_vars.update({
-                'message': f"Game Over! Your final score: {stats['score']}, XP: {stats['xp']}",
-                'show_name_input': True  # Allow restart
+                'message': f"Alas, brave {player_name}, your journey has come to an end!\nThough you fell, you achieved a noble score of {stats['score']} and gained {stats['xp']} XP!\nPerhaps another adventure awaits?",
+                'show_restart': True,
+                'show_choices': False,
+                'show_monster_choices': False,
+                'show_treasure_choices': False,
+                'event_type': EVENT_TYPES["GAMEOVER"],
+                'player_name': player_name,
+                'player_stats': stats
             })
             # Record the death in leaderboard
             add_to_leaderboard(
@@ -438,7 +481,7 @@ def make_choice():
         logger.error(f"Error processing choice: {str(e)}")
         template_vars = TEMPLATE_DEFAULTS.copy()
         template_vars.update({
-            'message': "An error occurred. Please try again.",
+            'message': "Alas! A mysterious force disrupts your adventure!\nThe ancient scrolls speak of such anomalies...\nPlease try again, brave or perhaps recalcitrant adventurer!",
             'show_name_input': True
         })
     

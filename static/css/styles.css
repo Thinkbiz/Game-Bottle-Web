@@ -804,10 +804,13 @@ h1, h2, h3, h4{
   margin-bottom: 1.5rem;
 }
 
-.game-message{
-  margin-bottom: 1rem;
-  font-size: 1.125rem;
-  line-height: 1.75rem;
+.game-message {
+    text-align: center;
+    padding: 1.5rem;
+    white-space: pre-line;  /* Preserve line breaks */
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
 }
 
 .game-options > :not([hidden]) ~ :not([hidden]){
