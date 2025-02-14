@@ -58,4 +58,4 @@ docker-compose.override.yml
 
 # Keep infrastructure documentation
 !infrastructure/*/
-!infrastructure/**/README.md 
+!infrastructure/**/README.md *.tar
