@@ -24,14 +24,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '0.75'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
     networks:
       - game-network
     logging:
@@ -39,7 +31,6 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
-    stop_grace_period: 30s
     security_opt:
       - no-new-privileges:true
     read_only: true
