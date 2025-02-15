@@ -6,8 +6,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - game_data:/app/data
-      - game_logs:/app/logs
+      - ./data:/app/data
+      - ./logs:/app/logs
       - ./static:/app/static:ro
       - ./views:/app/views:ro
     environment:
