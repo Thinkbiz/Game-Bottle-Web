@@ -23,7 +23,14 @@ jobs:
             
             echo "=== BACKUP USER DATA ==="
             cd /opt/docker-game
-            tar -czf /tmp/game_backup.tar.gz data/* logs/*
+            if [ -d "data" ] || [ -d "logs" ]; then
+              mkdir -p /tmp/backup
+              [ -d "data" ] && cp -r data /tmp/backup/
+              [ -d "logs" ] && cp -r logs /tmp/backup/
+              echo "Backup created successfully"
+            else
+              echo "No existing data to backup"
+            fi
             
             echo "=== COMPLETE DOCKER RESET ==="
             # Stop all containers
@@ -34,7 +41,7 @@ jobs:
             docker system prune -af --volumes
             
             echo "=== UNINSTALL DOCKER ==="
-            systemctl stop docker.service docker.socket
+            systemctl stop docker.service docker.socket || true
             apt-get purge -y docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras
             rm -rf /var/lib/docker /etc/docker
             rm -rf /var/run/docker.sock
@@ -69,9 +76,15 @@ jobs:
             rm -rf data logs static views
             mkdir -p data logs static views
             
-            # Restore user data
-            tar -xzf /tmp/game_backup.tar.gz
-            rm /tmp/game_backup.tar.gz
+            # Restore user data if backup exists
+            if [ -d "/tmp/backup" ]; then
+              [ -d "/tmp/backup/data" ] && cp -r /tmp/backup/data/* data/ || true
+              [ -d "/tmp/backup/logs" ] && cp -r /tmp/backup/logs/* logs/ || true
+              rm -rf /tmp/backup
+              echo "Data restored successfully"
+            else
+              echo "No backup to restore"
+            fi
             
             # Set proper permissions
             chown -R root:root data logs static views
