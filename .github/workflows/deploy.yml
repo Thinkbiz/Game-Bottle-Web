@@ -20,44 +20,71 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
             set -x  # Enable debug mode
-            cd /opt/docker-game || exit 1
-            echo "Current directory: $(pwd)"
             
-            echo "Stopping any running containers..."
+            echo "=== ENVIRONMENT CHECK ==="
+            pwd
+            ls -la
+            
+            echo "=== CHANGING DIRECTORY ==="
+            cd /opt/docker-game || {
+              echo "Failed to change directory to /opt/docker-game"
+              exit 1
+            }
+            
+            echo "=== CURRENT STATE ==="
+            pwd
+            ls -la
+            git status || echo "Not a git repository"
+            
+            echo "=== DOCKER STATUS BEFORE ==="
+            docker ps -a
+            docker-compose -f docker-compose.prod.yml ps
+            
+            echo "=== STOPPING CONTAINERS ==="
             docker-compose -f docker-compose.prod.yml down || true
             
-            echo "Fetching latest code..."
-            git fetch origin main || exit 1
-            git reset --hard origin/main || exit 1
+            echo "=== UPDATING CODE ==="
+            git fetch origin main || {
+              echo "Failed to fetch from git"
+              exit 1
+            }
+            git reset --hard origin/main || {
+              echo "Failed to reset to main"
+              exit 1
+            }
             
-            echo "Checking Docker status..."
-            docker ps
-            docker system df
-            
-            echo "Building Docker image..."
+            echo "=== DOCKER BUILD ==="
             docker-compose -f docker-compose.prod.yml build --no-cache 2>&1
-            if [ $? -ne 0 ]; then
-              echo "Docker build failed. Build logs:"
+            BUILD_STATUS=$?
+            if [ $BUILD_STATUS -ne 0 ]; then
+              echo "Docker build failed with status $BUILD_STATUS"
               docker-compose -f docker-compose.prod.yml logs
               exit 1
             fi
             
-            echo "Starting container..."
+            echo "=== STARTING CONTAINER ==="
             docker-compose -f docker-compose.prod.yml up -d 2>&1
-            if [ $? -ne 0 ]; then
-              echo "Docker start failed. Container logs:"
+            START_STATUS=$?
+            if [ $START_STATUS -ne 0 ]; then
+              echo "Docker start failed with status $START_STATUS"
               docker-compose -f docker-compose.prod.yml logs
               exit 1
             fi
             
-            echo "Waiting for container to start..."
+            echo "=== WAITING FOR STARTUP ==="
             sleep 10
             
-            echo "Final container status:"
-            docker ps
+            echo "=== CONTAINER STATUS ==="
+            docker ps -a
+            docker-compose -f docker-compose.prod.yml ps
             
-            echo "Container logs:"
+            echo "=== CONTAINER LOGS ==="
             docker-compose -f docker-compose.prod.yml logs --tail=100
             
-            echo "Checking application health..."
-            curl -v http://localhost:8000/health || echo "Health check failed" 
+            echo "=== CHECKING NGINX ==="
+            systemctl status nginx || echo "Nginx status check failed"
+            
+            echo "=== CHECKING APPLICATION ==="
+            curl -v http://localhost:8000/health || echo "Health check failed"
+            
+            echo "=== DEPLOYMENT COMPLETE ===" 
