@@ -24,6 +24,8 @@ jobs:
             echo "=== ENVIRONMENT CHECK ==="
             pwd
             ls -la
+            docker --version
+            docker-compose --version
             
             echo "=== CHANGING DIRECTORY ==="
             cd /opt/docker-game || {
@@ -37,8 +39,16 @@ jobs:
             git status || echo "Not a git repository"
             
             echo "=== STOPPING AND CLEANING UP CONTAINERS ==="
+            # Stop running containers
             docker-compose -f docker-compose.prod.yml down --volumes --remove-orphans || true
+            
+            # Remove specific container if it exists
             docker rm -f docker-game_web_1 || true
+            
+            # Remove any old volumes
+            docker volume rm docker-game_game_data docker-game_game_logs || true
+            
+            # Clean up system
             docker system prune -f
             
             echo "=== UPDATING CODE ==="
@@ -51,9 +61,14 @@ jobs:
               exit 1
             }
             
-            echo "=== CREATING REQUIRED DIRECTORIES ==="
-            mkdir -p data logs
-            chmod 777 data logs
+            echo "=== CREATING AND PREPARING DIRECTORIES ==="
+            # Create directories if they don't exist
+            mkdir -p data logs static views
+            
+            # Set proper permissions
+            chown -R root:root data logs static views
+            chmod -R 755 static views  # Read-only for static content
+            chmod -R 777 data logs     # Read-write for data directories
             
             echo "=== DOCKER BUILD ==="
             docker-compose -f docker-compose.prod.yml build --no-cache 2>&1

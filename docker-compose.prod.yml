@@ -6,10 +6,20 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./static:/app/static:ro
-      - ./views:/app/views:ro
+      - type: bind
+        source: ./data
+        target: /app/data
+      - type: bind
+        source: ./logs
+        target: /app/logs
+      - type: bind
+        source: ./static
+        target: /app/static
+        read_only: true
+      - type: bind
+        source: ./views
+        target: /app/views
+        read_only: true
     environment:
       - HOST=0.0.0.0
       - PORT=8000
