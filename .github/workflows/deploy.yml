@@ -19,30 +19,45 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            set -x  # Enable debug mode to see commands being executed
+            set -x  # Enable debug mode
             cd /opt/docker-game || exit 1
             echo "Current directory: $(pwd)"
+            
+            echo "Stopping any running containers..."
+            docker-compose -f docker-compose.prod.yml down || true
+            
             echo "Fetching latest code..."
             git fetch origin main || exit 1
             git reset --hard origin/main || exit 1
+            
+            echo "Checking Docker status..."
+            docker ps
+            docker system df
+            
             echo "Building Docker image..."
-            docker-compose -f docker-compose.prod.yml down || true
             docker-compose -f docker-compose.prod.yml build --no-cache 2>&1
             if [ $? -ne 0 ]; then
-              echo "Docker build failed. Showing logs:"
+              echo "Docker build failed. Build logs:"
               docker-compose -f docker-compose.prod.yml logs
               exit 1
             fi
+            
             echo "Starting container..."
             docker-compose -f docker-compose.prod.yml up -d 2>&1
             if [ $? -ne 0 ]; then
-              echo "Docker start failed. Showing logs:"
+              echo "Docker start failed. Container logs:"
               docker-compose -f docker-compose.prod.yml logs
               exit 1
             fi
+            
             echo "Waiting for container to start..."
             sleep 10
-            echo "Container status:"
+            
+            echo "Final container status:"
             docker ps
+            
             echo "Container logs:"
-            docker-compose -f docker-compose.prod.yml logs --tail=50 
+            docker-compose -f docker-compose.prod.yml logs --tail=100
+            
+            echo "Checking application health..."
+            curl -v http://localhost:8000/health || echo "Health check failed" 
