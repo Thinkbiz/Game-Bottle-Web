@@ -61,6 +61,7 @@ services:
       --error-logfile /app/logs/gunicorn-error.log
       --capture-output
       --log-level debug
+      --no-pidfile
       web_game:app"
 
 volumes:
