@@ -23,7 +23,7 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8000
-      - DEBUG=False
+      - DEBUG=True
       - WORKERS=2
       - TIMEOUT=120
       - KEEP_ALIVE=30
@@ -41,6 +41,8 @@ services:
       options:
         max-size: "20m"
         max-file: "5"
+        mode: "non-blocking"
+        tag: "{{.Name}}"
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -50,6 +52,16 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
+    command: >
+      sh -c "gunicorn
+      --bind 0.0.0.0:8000
+      --workers 2
+      --timeout 120
+      --access-logfile /app/logs/gunicorn-access.log
+      --error-logfile /app/logs/gunicorn-error.log
+      --capture-output
+      --log-level debug
+      web_game:app"
 
 volumes:
   game_data:
