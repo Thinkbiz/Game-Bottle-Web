@@ -61,10 +61,17 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('game.log')
+        logging.FileHandler('logs/game_state.log')
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Add a dedicated game state logger
+game_state_logger = logging.getLogger('game_state')
+game_state_logger.setLevel(logging.DEBUG)
+game_state_handler = logging.FileHandler('logs/game_state.log')
+game_state_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+game_state_logger.addHandler(game_state_handler)
 
 # Default template variables
 TEMPLATE_DEFAULTS: Dict[str, Any] = {
@@ -94,14 +101,6 @@ VICTORY_EVENT_TYPES = {
     "Glorious Victory": "victory_glorious", 
     "Pyrrhic Victory": "victory_pyrrhic",
     "Standard Victory": "victory_standard"
-}
-
-# Victory messages
-VICTORY_MESSAGES = {
-    "Perfect Victory": f"Incredible, {player_name}! You've mastered the game with style and grace!\nYour health is outstanding, your score is magnificent, and your experience is unmatched!\nYou are truly a legend!",
-    "Glorious Victory": f"Well done, {player_name}! A truly heroic victory!\nYou've maintained your health admirably while gathering the experience needed to triumph!\nThe bards will sing tales of your journey!",
-    "Pyrrhic Victory": f"Against all odds, {player_name}, you've achieved victory at great cost!\nThough your health has suffered greatly, your determination never wavered!\nA hard-won victory is still a victory!",
-    "Standard Victory": f"Congratulations, {player_name}! You've mastered the game!\nThrough careful balance of risk and reward, you've achieved your goal!\nMay your future adventures be just as successful!"
 }
 
 def test_template_vars(template_vars: Dict[str, Any]) -> bool:
@@ -183,6 +182,8 @@ def get_game_state() -> Dict[str, Any]:
     # Initialize previous_stats if not present
     if 'stats' in state and 'previous_stats' not in state:
         state['previous_stats'] = state['stats'].copy()
+    
+    game_state_logger.debug(f"Current game state for session {session_id}: {json.dumps(state, indent=2)}")
     return state
 
 def save_game_state(state: Dict[str, Any]) -> None:
@@ -195,8 +196,12 @@ def save_game_state(state: Dict[str, Any]) -> None:
         current_state = game_states.get(session_id, {})
         if 'stats' in current_state:
             state['previous_stats'] = current_state['stats'].copy()
+            game_state_logger.info(f"State transition for session {session_id}:")
+            game_state_logger.info(f"Previous stats: {json.dumps(current_state['stats'], indent=2)}")
+            game_state_logger.info(f"New stats: {json.dumps(state['stats'], indent=2)}")
         else:
             state['previous_stats'] = state['stats'].copy()
+            game_state_logger.info(f"Initial state for session {session_id}: {json.dumps(state['stats'], indent=2)}")
     
     game_states[session_id] = state
 
@@ -215,9 +220,15 @@ def get_event_type(victory_type):
     """Get the event type for a given victory type."""
     return VICTORY_EVENT_TYPES.get(victory_type, "victory_standard")
 
-def get_victory_message(victory_type):
+def get_victory_message(victory_type, player_name):
     """Get the message for a given victory type."""
-    return VICTORY_MESSAGES.get(victory_type, VICTORY_MESSAGES["Standard Victory"])
+    messages = {
+        "Perfect Victory": f"Incredible, {player_name}! You've mastered the game with style and grace!\nYour health is outstanding, your score is magnificent, and your experience is unmatched!\nYou are truly a legend!",
+        "Glorious Victory": f"Well done, {player_name}! A truly heroic victory!\nYou've maintained your health admirably while gathering the experience needed to triumph!\nThe bards will sing tales of your journey!",
+        "Pyrrhic Victory": f"Against all odds, {player_name}, you've achieved victory at great cost!\nThough your health has suffered greatly, your determination never wavered!\nA hard-won victory is still a victory!",
+        "Standard Victory": f"Congratulations, {player_name}! You've mastered the game!\nThrough careful balance of risk and reward, you've achieved your goal!\nMay your future adventures be just as successful!"
+    }
+    return messages.get(victory_type, messages["Standard Victory"])
 
 # Initialize database
 init_db()
@@ -463,7 +474,7 @@ def make_choice():
             template_vars.update({
                 'victory_type': victory_type,
                 'event_type': get_event_type(victory_type),
-                'message': f"\n{victory_type}!\n{get_victory_message(victory_type)}\n"
+                'message': f"\n{victory_type}!\n{get_victory_message(victory_type, player_name)}\n"
                           f"Final Stats - Health: {stats['health']} | Score: {stats['score']} | XP: {stats['xp']}",
                 'show_restart': True,
                 'player_name': player_name
