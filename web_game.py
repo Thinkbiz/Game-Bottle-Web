@@ -1,6 +1,9 @@
 from bottle import route, run, template, static_file, request, redirect, response, default_app
 import random
-from database import init_db, add_to_leaderboard, get_leaderboard
+from database import (init_db, add_to_leaderboard, get_leaderboard, 
+                     update_regional_stats, get_regional_stats,
+                     update_player_achievement, update_player_session_stats,
+                     get_player_session_stats)
 import json
 import os
 from datetime import datetime
@@ -14,8 +17,7 @@ VICTORY_TYPES = {
     "PERFECT": "Perfect Victory",
     "GLORIOUS": "Glorious Victory",
     "PYRRHIC": "Pyrrhic Victory",
-    "STANDARD": "Standard Victory",
-    "DIED": "Died"
+    "STANDARD": "Standard Victory"
 }
 
 GAME_THRESHOLDS = {
@@ -84,6 +86,22 @@ DEFAULT_STATS: Dict[str, int] = {
     'health': 100,
     'score': 0,
     'xp': 0
+}
+
+# Event type mapping for victories
+VICTORY_EVENT_TYPES = {
+    "Perfect Victory": "victory_perfect",
+    "Glorious Victory": "victory_glorious", 
+    "Pyrrhic Victory": "victory_pyrrhic",
+    "Standard Victory": "victory_standard"
+}
+
+# Victory messages
+VICTORY_MESSAGES = {
+    "Perfect Victory": f"Incredible, {player_name}! You've mastered the game with style and grace!\nYour health is outstanding, your score is magnificent, and your experience is unmatched!\nYou are truly a legend!",
+    "Glorious Victory": f"Well done, {player_name}! A truly heroic victory!\nYou've maintained your health admirably while gathering the experience needed to triumph!\nThe bards will sing tales of your journey!",
+    "Pyrrhic Victory": f"Against all odds, {player_name}, you've achieved victory at great cost!\nThough your health has suffered greatly, your determination never wavered!\nA hard-won victory is still a victory!",
+    "Standard Victory": f"Congratulations, {player_name}! You've mastered the game!\nThrough careful balance of risk and reward, you've achieved your goal!\nMay your future adventures be just as successful!"
 }
 
 def test_template_vars(template_vars: Dict[str, Any]) -> bool:
@@ -182,18 +200,24 @@ def save_game_state(state: Dict[str, Any]) -> None:
     
     game_states[session_id] = state
 
-def check_victory_type(stats: Dict[str, int]) -> Optional[str]:
-    """Check if player has achieved victory and determine type"""
-    if stats['xp'] >= GAME_THRESHOLDS["VICTORY_XP"]:
-        if stats['health'] > GAME_THRESHOLDS["PERFECT_HEALTH"] and stats['score'] > GAME_THRESHOLDS["PERFECT_SCORE"]:
-            return VICTORY_TYPES["PERFECT"]
-        elif stats['health'] > GAME_THRESHOLDS["GLORIOUS_HEALTH"]:
-            return VICTORY_TYPES["GLORIOUS"]
-        elif stats['health'] <= GAME_THRESHOLDS["PYRRHIC_HEALTH"]:
-            return VICTORY_TYPES["PYRRHIC"]
-        else:
-            return VICTORY_TYPES["STANDARD"]
-    return None
+def determine_victory_type(stats):
+    """Determine the type of victory based on player stats."""
+    if stats['health'] > GAME_THRESHOLDS["PERFECT_HEALTH"] and stats['score'] > GAME_THRESHOLDS["PERFECT_SCORE"]:
+        return VICTORY_TYPES["PERFECT"]
+    elif stats['health'] > GAME_THRESHOLDS["GLORIOUS_HEALTH"]:
+        return VICTORY_TYPES["GLORIOUS"]
+    elif stats['health'] <= GAME_THRESHOLDS["PYRRHIC_HEALTH"]:
+        return VICTORY_TYPES["PYRRHIC"]
+    else:
+        return VICTORY_TYPES["STANDARD"]
+
+def get_event_type(victory_type):
+    """Get the event type for a given victory type."""
+    return VICTORY_EVENT_TYPES.get(victory_type, "victory_standard")
+
+def get_victory_message(victory_type):
+    """Get the message for a given victory type."""
+    return VICTORY_MESSAGES.get(victory_type, VICTORY_MESSAGES["Standard Victory"])
 
 # Initialize database
 init_db()
@@ -228,7 +252,8 @@ def game():
         template_vars.update({
             'message': f"Welcome back, {game_state['player_name']}!\nYour epic quest continues! What challenges await you today?",
             'show_choices': True,
-            'player_stats': game_state.get('stats')
+            'player_stats': game_state.get('stats'),
+            'player_name': game_state['player_name']
         })
     else:
         template_vars.update({
@@ -243,6 +268,11 @@ def game():
 def start_game():
     player_name = request.forms.get('player_name', '').strip()
     template_vars = TEMPLATE_DEFAULTS.copy()
+    
+    # If no new name provided, check if we have an existing name
+    if not player_name:
+        game_state = get_game_state()
+        player_name = game_state.get('player_name', '').strip()
     
     if player_name:
         logger.debug(f"Starting new game for player: {player_name}")
@@ -420,15 +450,8 @@ def make_choice():
         template_vars['previous_stats'] = previous_stats
         
         # Check for win condition before checking for game over
-        victory_type = check_victory_type(stats)
+        victory_type = determine_victory_type(stats)
         if victory_type:
-            # Map victory types to event types
-            victory_event_types = {
-                "Perfect Victory": EVENT_TYPES["VICTORY_PERFECT"],
-                "Glorious Victory": EVENT_TYPES["VICTORY_GLORIOUS"],
-                "Pyrrhic Victory": EVENT_TYPES["VICTORY_PYRRHIC"],
-                "Standard Victory": EVENT_TYPES["VICTORY_STANDARD"]
-            }
             # Add to leaderboard when victory is achieved
             add_to_leaderboard(
                 player_name=player_name,
@@ -437,26 +460,26 @@ def make_choice():
                 victory_type=victory_type,
                 health=stats['health']
             )
-            victory_messages = {
-                "PERFECT VICTORY": f"Incredible, {player_name}! You've mastered the game with style and grace!\nYour health is outstanding, your score is magnificent, and your experience is unmatched!\nYou are truly a legendary adventurer!",
-                "GLORIOUS VICTORY": f"Well done, {player_name}! A truly heroic victory!\nYou've maintained your health admirably while gathering the experience needed to triumph!\nThe bards will sing tales of your journey!",
-                "PYRRHIC VICTORY": f"Against all odds, {player_name}, you've achieved victory at great cost!\nThough your health has suffered greatly, your determination never wavered!\nA hard-won victory is still a victory!",
-                "STANDARD VICTORY": f"Congratulations, {player_name}! You've mastered the game!\nThrough careful balance of risk and reward, you've achieved your goal!\nMay your future adventures be just as successful!"
-            }
             template_vars.update({
                 'victory_type': victory_type,
-                'event_type': victory_event_types.get(victory_type),
-                'message': f"\n{victory_type}!\n{victory_messages[victory_type]}\n"
+                'event_type': get_event_type(victory_type),
+                'message': f"\n{victory_type}!\n{get_victory_message(victory_type)}\n"
                           f"Final Stats - Health: {stats['health']} | Score: {stats['score']} | XP: {stats['xp']}",
-                'show_name_input': True  # Allow restart
+                'show_restart': True,
+                'player_name': player_name
             })
-            game_states.pop(get_session_id(), None)  # Clear game state
+            # Preserve player name and session ID while clearing other state
+            preserved_state = {
+                'player_name': game_states[get_session_id()]['player_name'],
+                'session_id': get_session_id()  # Preserve the session ID
+            }
+            game_states[get_session_id()] = preserved_state
             return template('game', **template_vars)
         
         # Check for game over
         if stats['health'] <= 0:
             template_vars.update({
-                'message': f"Alas, brave {player_name}, your journey has come to an end!\nThough you fell, you achieved a noble score of {stats['score']} and gained {stats['xp']} XP!\nPerhaps another adventure awaits?",
+                'message': f"Alas, brave {player_name}, your journey has come to an end!\nThough you fell, you achieved a noble score of {stats['score']} and gained {stats['xp']} XP!\nWould you like to embark on another adventure?",
                 'show_restart': True,
                 'show_choices': False,
                 'show_monster_choices': False,
@@ -473,7 +496,12 @@ def make_choice():
                 victory_type="DIED",
                 health=stats['health']
             )
-            game_states.pop(get_session_id(), None)  # Clear game state
+            # Preserve player name and session ID while clearing other state
+            preserved_state = {
+                'player_name': game_states[get_session_id()]['player_name'],
+                'session_id': get_session_id()  # Preserve the session ID
+            }
+            game_states[get_session_id()] = preserved_state
         
         return template('game', **template_vars)
 
@@ -554,9 +582,117 @@ def debug_die():
         victory_type="DIED",
         health=game_state['stats']['health']
     )
-    game_states.pop(get_session_id(), None)  # Clear game state
+    # Preserve player name and session ID while clearing other state
+    preserved_state = {
+        'player_name': game_states[get_session_id()]['player_name'],
+        'session_id': get_session_id()  # Preserve the session ID
+    }
+    game_states[get_session_id()] = preserved_state
     
     return template('game', **template_vars)
+
+@route('/api/stats/regional', method='POST')
+def update_region():
+    """Update regional statistics"""
+    try:
+        data = request.json
+        if not data:
+            response.status = 400
+            return {'error': 'No data provided'}
+            
+        required_fields = ['region_key', 'country', 'region', 'player_name']
+        if not all(field in data for field in required_fields):
+            response.status = 400
+            return {'error': 'Missing required fields'}
+            
+        update_regional_stats(
+            region_key=data['region_key'],
+            country=data['country'],
+            region=data['region'],
+            player_name=data['player_name'],
+            combat_style=data.get('combat_style'),
+            action=data.get('action')
+        )
+        return {'status': 'success'}
+    except Exception as e:
+        logger.error(f"Error updating regional stats: {str(e)}")
+        response.status = 500
+        return {'error': 'Internal server error'}
+
+@route('/api/stats/regional/<region_key>', method='GET')
+def get_region(region_key):
+    """Get regional statistics"""
+    try:
+        stats = get_regional_stats(region_key)
+        if stats:
+            return stats
+        response.status = 404
+        return {'error': 'Region not found'}
+    except Exception as e:
+        logger.error(f"Error getting regional stats: {str(e)}")
+        response.status = 500
+        return {'error': 'Internal server error'}
+
+@route('/api/achievements', method='POST')
+def record_achievement():
+    """Record a player achievement"""
+    try:
+        data = request.json
+        if not data or 'player_name' not in data or 'achievement' not in data:
+            response.status = 400
+            return {'error': 'Missing required fields'}
+            
+        update_player_achievement(
+            player_name=data['player_name'],
+            achievement=data['achievement']
+        )
+        return {'status': 'success'}
+    except Exception as e:
+        logger.error(f"Error recording achievement: {str(e)}")
+        response.status = 500
+        return {'error': 'Internal server error'}
+
+@route('/api/stats/session', method='POST')
+def update_session():
+    """Update session statistics"""
+    try:
+        data = request.json
+        if not data:
+            response.status = 400
+            return {'error': 'No data provided'}
+            
+        required_fields = ['player_name', 'session_id']
+        if not all(field in data for field in required_fields):
+            response.status = 400
+            return {'error': 'Missing required fields'}
+            
+        stats_update = {k: v for k, v in data.items() 
+                       if k not in ['player_name', 'session_id']}
+        
+        update_player_session_stats(
+            player_name=data['player_name'],
+            session_id=data['session_id'],
+            stats_update=stats_update
+        )
+        return {'status': 'success'}
+    except Exception as e:
+        logger.error(f"Error updating session stats: {str(e)}")
+        response.status = 500
+        return {'error': 'Internal server error'}
+
+@route('/api/stats/session/<player_name>/<session_id>', method='GET')
+def get_session(player_name, session_id):
+    """Get session statistics"""
+    try:
+        stats = get_player_session_stats(player_name, session_id)
+        if stats:
+            return stats
+        response.status = 404
+        return {'error': 'Session not found'}
+    except Exception as e:
+        logger.error(f"Error getting session stats: {str(e)}")
+        response.status = 500
+        return {'error': 'Internal server error'}
 
 # Initialize app with middleware
 app = default_app()

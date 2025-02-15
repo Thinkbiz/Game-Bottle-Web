@@ -7,6 +7,14 @@ print("Script is starting...", flush=True)
 
 VERSION = "Alpha 1.0"
 
+# Victory type constants
+VICTORY_TYPES = {
+    "PERFECT": "Perfect Victory",
+    "GLORIOUS": "Glorious Victory",
+    "PYRRHIC": "Pyrrhic Victory",
+    "STANDARD": "Standard Victory"
+}
+
 def init_leaderboard():
     conn = sqlite3.connect('game.db')
     c = conn.cursor()
@@ -48,11 +56,7 @@ def show_leaderboard():
 
     # Add Victory Types Legend first
     print("\n=== VICTORY TYPES EXPLANATION ===")
-    print("PERFECT VICTORY  : Health > 80, Score > 50, XP ≥ 200")
-    print("GLORIOUS VICTORY: Health > 50, XP ≥ 200")
-    print("PYRRHIC VICTORY : Health ≤ 20, XP ≥ 200")
-    print("STANDARD VICTORY: XP ≥ 200")
-    print("DIED           : Health reached 0")
+    print_victory_conditions()
     
     # Add a separator
     print("\n" + "=" * 60)
@@ -65,17 +69,36 @@ def show_leaderboard():
         date_str = datetime.fromisoformat(date).strftime('%Y-%m-%d %H:%M')
         print(f"{i:<5} {name:<15} {score:<6} {xp:<5} {victory_type:<15} {health:<6} {date_str}")
 
-def check_victory_type(health, score, xp):
-    if xp >= 200:
-        if health > 80 and score > 50:
-            return "PERFECT VICTORY"
-        elif health > 50:
-            return "GLORIOUS VICTORY"
-        elif health <= 20:
-            return "PYRRHIC VICTORY"
+def print_victory_conditions():
+    """Print the conditions for each victory type"""
+    print("\nVictory Conditions:")
+    print(f"{VICTORY_TYPES['PERFECT']}  : Health > 80, Score > 50, XP ≥ 200")
+    print(f"{VICTORY_TYPES['GLORIOUS']}: Health > 50, XP ≥ 200")
+    print(f"{VICTORY_TYPES['PYRRHIC']} : Health ≤ 20, XP ≥ 200")
+    print(f"{VICTORY_TYPES['STANDARD']}: XP ≥ 200")
+
+def determine_victory_type(stats):
+    """Determine victory type based on final stats"""
+    if stats['xp'] >= 200:
+        if stats['health'] > 80 and stats['score'] > 50:
+            return VICTORY_TYPES["PERFECT"]
+        elif stats['health'] > 50:
+            return VICTORY_TYPES["GLORIOUS"]
+        elif stats['health'] <= 20:
+            return VICTORY_TYPES["PYRRHIC"]
         else:
-            return "STANDARD VICTORY"
+            return VICTORY_TYPES["STANDARD"]
     return None
+
+def get_victory_color(victory_type):
+    """Get the color code for each victory type"""
+    if victory_type == VICTORY_TYPES["PERFECT"]:
+        return "\033[1;36m"  # Cyan
+    elif victory_type == VICTORY_TYPES["GLORIOUS"]:
+        return "\033[1;32m"  # Green
+    elif victory_type == VICTORY_TYPES["PYRRHIC"]:
+        return "\033[1;31m"  # Red
+    return "\033[1;33m"  # Yellow for Standard
 
 def main():
     init_leaderboard()  # Initialize leaderboard table
@@ -111,14 +134,14 @@ def play_game():
         print(f"{player_name}'s Health: {health} | Score: {score} | XP: {xp}")
         
         # Check for win condition
-        victory_type = check_victory_type(health, score, xp)
+        victory_type = determine_victory_type({'health': health, 'score': score, 'xp': xp})
         if victory_type:
-            print(f"\n{victory_type}!")
-            if victory_type == "PERFECT VICTORY":
+            print(f"\n{get_victory_color(victory_type)}{victory_type}!")
+            if victory_type == VICTORY_TYPES["PERFECT"]:
                 print(f"Incredible, {player_name}! You've mastered the game with style and grace!")
-            elif victory_type == "GLORIOUS VICTORY":
+            elif victory_type == VICTORY_TYPES["GLORIOUS"]:
                 print(f"Well done, {player_name}! A truly heroic victory!")
-            elif victory_type == "PYRRHIC VICTORY":
+            elif victory_type == VICTORY_TYPES["PYRRHIC"]:
                 print(f"Against all odds, {player_name}, you've achieved victory at great cost!")
             else:
                 print(f"Congratulations, {player_name}! You've mastered the game!")

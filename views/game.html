@@ -33,13 +33,52 @@
             }
         }
         
+        // Session ID management functions
+        function getOrCreateSessionId() {
+            const existingId = localStorage.getItem('session_id');
+            if (existingId) {
+                return existingId;
+            }
+            
+            const newId = generateUniqueSessionId();
+            localStorage.setItem('session_id', newId);
+            return newId;
+        }
+
+        function generateUniqueSessionId() {
+            try {
+                // Generate cryptographically secure random values
+                const array = new Uint8Array(16);
+                window.crypto.getRandomValues(array);
+                
+                // Convert to hex string with timestamp prefix
+                const timestamp = Date.now().toString(16);
+                const randomHex = Array.from(array)
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('');
+                
+                return `${timestamp}-${randomHex}`;
+            } catch (error) {
+                // Fallback for older browsers (still better than Math.random)
+                const timestamp = Date.now().toString(16);
+                const random = Array.from(
+                    { length: 16 }, 
+                    () => Math.floor(Math.random() * 256)
+                        .toString(16)
+                        .padStart(2, '0')
+                ).join('');
+                
+                return `${timestamp}-${random}`;
+            }
+        }
+        
         // Enhanced event tracking with detailed location
         async function trackGameEvent(event_name, event_params = {}) {
             // Add common parameters
             const commonParams = {
                 player_name: '{{player_name if player_name else "anonymous"}}',
                 screen_name: '{{event_type if event_type else "welcome"}}',
-                session_id: localStorage.getItem('session_id') || Math.random().toString(36).substring(7)
+                session_id: getOrCreateSessionId()
             };
             
             // Add or update location data every 24 hours
@@ -50,150 +89,163 @@
             if (needsLocationUpdate) {
                 const locationData = await getApproximateLocation();
                 if (locationData) {
-                    localStorage.setItem('player_location', JSON.stringify(locationData));
-                    localStorage.setItem('location_last_updated', Date.now().toString());
+                    // Update regional stats on the server
+                    const regionKey = `${locationData.country}_${locationData.state || locationData.region}`;
+                    try {
+                        await fetch('/api/stats/regional', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                region_key: regionKey,
+                                country: locationData.country,
+                                region: locationData.state || locationData.region,
+                                player_name: commonParams.player_name,
+                                combat_style: event_name === 'combat_choice' ? 
+                                    (event_params.choice === 'fight' ? 'brave' : 
+                                     event_params.choice === 'run' ? 'cautious' : 'balanced') : undefined,
+                                action: event_params.choice
+                            })
+                        });
+                        
+                        // Store minimal location data locally
+                        localStorage.setItem('region_key', regionKey);
+                        localStorage.setItem('location_last_updated', Date.now().toString());
+                    } catch (error) {
+                        console.error('Failed to update regional stats:', error);
+                    }
                 }
             }
             
             // Add location to tracking if available
-            const locationData = localStorage.getItem('player_location');
-            if (locationData) {
-                commonParams.location = JSON.parse(locationData);
-            }
-            
-            // Track regional play patterns
-            if (commonParams.location) {
-                const regionKey = `${commonParams.location.country}_${commonParams.location.state || commonParams.location.region}`;
-                const regionalStats = JSON.parse(localStorage.getItem('regional_stats') || '{}');
-                
-                if (!regionalStats[regionKey]) {
-                    regionalStats[regionKey] = {
-                        players: new Set([commonParams.player_name]),
-                        total_games: 0,
-                        combat_styles: { brave: 0, cautious: 0, balanced: 0 },
-                        favorite_actions: { fight: 0, run: 0, rest: 0, search_alone: 0, get_help: 0 }
-                    };
+            const regionKey = localStorage.getItem('region_key');
+            if (regionKey) {
+                try {
+                    const response = await fetch(`/api/stats/regional/${regionKey}`);
+                    if (response.ok) {
+                        const regionalStats = await response.json();
+                        event_params.regional_insights = {
+                            region_total_games: regionalStats.total_games,
+                            region_player_count: regionalStats.total_players,
+                            region_combat_style: ['brave', 'cautious', 'balanced']
+                                .reduce((a, b) => regionalStats[`combat_style_${a}`] > regionalStats[`combat_style_${b}`] ? a : b),
+                            region_favorite_action: ['fight', 'run', 'rest', 'search_alone', 'get_help']
+                                .reduce((a, b) => regionalStats[`action_${a}`] > regionalStats[`action_${b}`] ? a : b)
+                        };
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch regional stats:', error);
                 }
-                
-                // Update regional stats
-                const region = regionalStats[regionKey];
-                region.players.add(commonParams.player_name);
-                
-                if (event_name === 'game_over' || event_name === 'victory') {
-                    region.total_games++;
-                }
-                
-                if (event_params.choice) {
-                    region.favorite_actions[event_params.choice] = 
-                        (region.favorite_actions[event_params.choice] || 0) + 1;
-                }
-                
-                if (event_name === 'combat_choice') {
-                    const style = event_params.choice === 'fight' ? 'brave' : 
-                                event_params.choice === 'run' ? 'cautious' : 'balanced';
-                    region.combat_styles[style]++;
-                }
-                
-                // Convert Set to Array for storage
-                regionalStats[regionKey].players = Array.from(region.players);
-                localStorage.setItem('regional_stats', JSON.stringify(regionalStats));
-                
-                // Add regional insights to event
-                event_params.regional_insights = {
-                    region_total_games: region.total_games,
-                    region_player_count: region.players.length,
-                    region_combat_style: Object.entries(region.combat_styles)
-                        .sort((a, b) => b[1] - a[1])[0][0],
-                    region_favorite_action: Object.entries(region.favorite_actions)
-                        .sort((a, b) => b[1] - a[1])[0][0]
-                };
             }
-            
-            // Store session_id if new
-            if (!localStorage.getItem('session_id')) {
-                localStorage.setItem('session_id', commonParams.session_id);
-            }
-            
-            // Track player statistics over time
-            const playerStats = JSON.parse(localStorage.getItem('player_stats') || '{}');
-            if (!playerStats[commonParams.player_name]) {
-                playerStats[commonParams.player_name] = {
-                    first_seen: new Date().toISOString(),
-                    games_played: 0,
-                    total_score: 0,
-                    total_xp: 0,
-                    best_score: 0,
-                    best_xp: 0
-                };
-            }
-            
-            // Update player stats if this is a game over or victory event
-            if (event_name === 'game_over' || event_name === 'victory') {
-                const stats = playerStats[commonParams.player_name];
-                stats.games_played++;
-                stats.total_score += parseInt(event_params.final_score || 0);
-                stats.total_xp += parseInt(event_params.final_xp || 0);
-                stats.best_score = Math.max(stats.best_score, parseInt(event_params.final_score || 0));
-                stats.best_xp = Math.max(stats.best_xp, parseInt(event_params.final_xp || 0));
-                localStorage.setItem('player_stats', JSON.stringify(playerStats));
-                
-                // Add player statistics to event
-                event_params.player_stats = stats;
-            }
-            
-            // Track turn count for the session
-            let turnCount = parseInt(localStorage.getItem('turn_count') || '0');
-            if (['combat_choice', 'treasure_choice', 'rest_choice', 'adventure_choice'].includes(event_name)) {
-                turnCount++;
-                localStorage.setItem('turn_count', turnCount);
-            }
-            
-            // Add fun metrics
-            const funMetrics = {
-                turn_count: turnCount,
-                time_since_start: localStorage.getItem('game_start') ? 
-                    (Date.now() - parseInt(localStorage.getItem('game_start'))) / 1000 : 0
-            };
             
             // Track achievements
-            if (event_name === 'combat_choice' && event_params.choice === 'fight' && !localStorage.getItem('first_blood')) {
-                gtag('event', 'achievement_unlocked', { achievement: 'first_blood' });
-                localStorage.setItem('first_blood', 'true');
+            if (event_name === 'combat_choice' && event_params.choice === 'fight') {
+                try {
+                    await fetch('/api/achievements', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            player_name: commonParams.player_name,
+                            achievement: 'first_blood'
+                        })
+                    });
+                } catch (error) {
+                    console.error('Failed to record achievement:', error);
+                }
             }
             
             if (event_params.health && parseInt(event_params.health) < 10) {
-                gtag('event', 'achievement_unlocked', { achievement: 'close_call' });
+                try {
+                    await fetch('/api/achievements', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            player_name: commonParams.player_name,
+                            achievement: 'close_call'
+                        })
+                    });
+                } catch (error) {
+                    console.error('Failed to record achievement:', error);
+                }
+            }
+            
+            // Update session stats
+            const sessionUpdate = {};
+            
+            // Track turn count
+            if (['combat_choice', 'treasure_choice', 'rest_choice', 'adventure_choice'].includes(event_name)) {
+                sessionUpdate.turn_count = 1;
             }
             
             // Track combat style
             if (event_name === 'combat_choice') {
-                let combatStyle = localStorage.getItem('combat_style') || 'balanced';
-                if (event_params.choice === 'run') {
-                    combatStyle = 'cautious';
-                } else if (event_params.choice === 'fight') {
-                    combatStyle = 'brave';
-                }
-                localStorage.setItem('combat_style', combatStyle);
-                funMetrics.combat_style = combatStyle;
+                sessionUpdate.combat_style = event_params.choice === 'run' ? 'cautious' : 
+                                           event_params.choice === 'fight' ? 'brave' : 'balanced';
             }
             
             // Track treasure hunting success
             if (event_name === 'treasure_choice') {
-                let treasuresFound = parseInt(localStorage.getItem('treasures_found') || '0');
-                let treasureAttempts = parseInt(localStorage.getItem('treasure_attempts') || '0');
+                const treasuresFound = parseInt(localStorage.getItem('treasures_found') || '0');
+                const treasureAttempts = parseInt(localStorage.getItem('treasure_attempts') || '0');
                 
                 if (event_params.choice === 'search_alone' || event_params.choice === 'get_help') {
-                    treasureAttempts++;
-                    localStorage.setItem('treasure_attempts', treasureAttempts);
+                    const newAttempts = treasureAttempts + 1;
+                    localStorage.setItem('treasure_attempts', newAttempts.toString());
+                    funMetrics.treasure_attempts = newAttempts;
                 }
                 
-                if (event_type === 'treasure_found') {
-                    treasuresFound++;
-                    localStorage.setItem('treasures_found', treasuresFound);
-                }
-                
-                funMetrics.treasure_success_rate = treasuresFound / treasureAttempts;
+                funMetrics.treasure_success_rate = treasuresFound / Math.max(1, treasureAttempts);
+                funMetrics.treasures_found = treasuresFound;
+                funMetrics.treasure_attempts = treasureAttempts;
             }
+            
+            // Track successful treasure finds separately
+            const currentEventType = '{{event_type}}';
+            if (currentEventType === 'treasure_found') {
+                const treasuresFound = parseInt(localStorage.getItem('treasures_found') || '0');
+                const newFound = treasuresFound + 1;
+                localStorage.setItem('treasures_found', newFound.toString());
+                funMetrics.treasures_found = newFound;
+            }
+            
+            // Update game stats
+            if (event_name === 'game_over' || event_name === 'victory') {
+                sessionUpdate.games_played = 1;
+                sessionUpdate.total_score = parseInt(event_params.final_score || 0);
+                sessionUpdate.total_xp = parseInt(event_params.final_xp || 0);
+                sessionUpdate.best_score = parseInt(event_params.final_score || 0);
+                sessionUpdate.best_xp = parseInt(event_params.final_xp || 0);
+            }
+            
+            // Send session update to server
+            if (Object.keys(sessionUpdate).length > 0) {
+                try {
+                    await fetch('/api/stats/session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            player_name: commonParams.player_name,
+                            session_id: commonParams.session_id,
+                            ...sessionUpdate
+                        })
+                    });
+                    
+                    // Get updated session stats
+                    const response = await fetch(`/api/stats/session/${commonParams.player_name}/${commonParams.session_id}`);
+                    if (response.ok) {
+                        const sessionStats = await response.json();
+                        event_params.session_stats = sessionStats;
+                    }
+                } catch (error) {
+                    console.error('Failed to update session stats:', error);
+                }
+            }
+            
+            // Add fun metrics
+            const funMetrics = {
+                turn_count: event_params.session_stats?.turn_count || 0,
+                time_since_start: localStorage.getItem('game_start') ? 
+                    (Date.now() - parseInt(localStorage.getItem('game_start'))) / 1000 : 0
+            };
             
             // Merge all parameters
             const finalParams = { 
@@ -207,7 +259,7 @@
             console.log('Tracked event:', event_name, finalParams);
         }
         
-        // Initialize game start time if not set
+        // Initialize game start time and session management
         if (!localStorage.getItem('game_start')) {
             localStorage.setItem('game_start', Date.now().toString());
         }
@@ -320,12 +372,12 @@
                 <div class="stat-container">
                     <div class="stat-label">
                         <span>❤️ Health</span>
-                        <span class="stat-value">{{player_stats['health']}}</span>
+                        <span class="stat-value">{{player_stats['health'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar health-bar" 
-                             data-value="{{player_stats['health']}}" 
-                             data-previous="{{previous_stats['health']}}"
+                        <div class="progress-bar health-bar health-width-{{(player_stats['health'] if player_stats else 0) // 10 * 10}}" 
+                             data-value="{{player_stats['health'] if player_stats else 0}}" 
+                             data-previous="{{previous_stats['health'] if previous_stats else 0}}"
                              data-max="100">
                         </div>
                     </div>
@@ -333,28 +385,26 @@
                 <div class="stat-container">
                     <div class="stat-label">
                         <span>⭐️ Score</span>
-                        <span class="stat-value">{{player_stats['score']}}</span>
+                        <span class="stat-value">{{player_stats['score'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar score-bar" 
-                             data-value="{{player_stats['score']}}"
-                             data-previous="{{previous_stats['score']}}"
-                             data-max="100"
-                             style="width: {{min(100, (player_stats['score'] / max(100, player_stats['score'])) * 100)}}%">
+                        <div class="progress-bar score-bar health-width-{{min(100, (player_stats['score'] if player_stats else 0) / max(100, (player_stats['score'] if player_stats else 100)) * 100) // 10 * 10}}"
+                             data-value="{{player_stats['score'] if player_stats else 0}}"
+                             data-previous="{{previous_stats['score'] if previous_stats else 0}}"
+                             data-max="100">
                         </div>
                     </div>
                 </div>
                 <div class="stat-container">
                     <div class="stat-label">
                         <span>✨ XP</span>
-                        <span class="stat-value">{{player_stats['xp']}}</span>
+                        <span class="stat-value">{{player_stats['xp'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar xp-bar" 
-                             data-value="{{player_stats['xp']}}"
-                             data-previous="{{previous_stats['xp']}}"
-                             data-max="200"
-                             style="width: {{(player_stats['xp'] / 200) * 100}}%">
+                        <div class="progress-bar xp-bar health-width-{{((player_stats['xp'] if player_stats else 0) / 200 * 100) // 10 * 10}}"
+                             data-value="{{player_stats['xp'] if player_stats else 0}}"
+                             data-previous="{{previous_stats['xp'] if previous_stats else 0}}"
+                             data-max="200">
                         </div>
                     </div>
                 </div>
@@ -370,7 +420,7 @@
                 % elif event_type == 'treasure':
                 <img src="/static/images/treasure_rumor.png" alt="Treasure Rumor" class="game-image">
                 % elif event_type == 'treasure_found':
-                <img src="/static/images/treasure_found.png" alt="Treasure Found" class="game-image">
+                <img src="/static/images/treasure_found.png?v=20250214224000" alt="Treasure Found" class="game-image">
                 % elif event_type == 'trap':
                 <img src="/static/images/trap.png" alt="Trap" class="game-image">
                 % elif event_type == 'local':
