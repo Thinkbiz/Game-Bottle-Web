@@ -19,14 +19,30 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            cd /opt/docker-game
-            git fetch origin main
-            git reset --hard origin/main
-            docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml build --no-cache
-            docker-compose -f docker-compose.prod.yml up -d
+            set -x  # Enable debug mode to see commands being executed
+            cd /opt/docker-game || exit 1
+            echo "Current directory: $(pwd)"
+            echo "Fetching latest code..."
+            git fetch origin main || exit 1
+            git reset --hard origin/main || exit 1
+            echo "Building Docker image..."
+            docker-compose -f docker-compose.prod.yml down || true
+            docker-compose -f docker-compose.prod.yml build --no-cache 2>&1
+            if [ $? -ne 0 ]; then
+              echo "Docker build failed. Showing logs:"
+              docker-compose -f docker-compose.prod.yml logs
+              exit 1
+            fi
+            echo "Starting container..."
+            docker-compose -f docker-compose.prod.yml up -d 2>&1
+            if [ $? -ne 0 ]; then
+              echo "Docker start failed. Showing logs:"
+              docker-compose -f docker-compose.prod.yml logs
+              exit 1
+            fi
             echo "Waiting for container to start..."
             sleep 10
+            echo "Container status:"
             docker ps
-            echo "Checking container logs..."
+            echo "Container logs:"
             docker-compose -f docker-compose.prod.yml logs --tail=50 
