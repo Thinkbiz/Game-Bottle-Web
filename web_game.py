@@ -513,6 +513,51 @@ def health_check():
 def get_favicon():
     return static_file('favicon.png', root='./static/favicon')
 
+@route('/debug/die', method='GET')
+def debug_die():
+    """Debug endpoint to simulate player death (temporary)"""
+    if not DEBUG:
+        return "Debug endpoints only available in debug mode"
+        
+    game_state = get_game_state()
+    if not game_state or 'stats' not in game_state:
+        # Create a test player if none exists
+        game_state = {
+            'stats': DEFAULT_STATS.copy(),
+            'player_name': 'Test Player'
+        }
+        save_game_state(game_state)
+    
+    # Set health to 0 and add some score/xp for testing
+    game_state['stats']['health'] = 0
+    game_state['stats']['score'] = 50
+    game_state['stats']['xp'] = 75
+    save_game_state(game_state)
+    
+    template_vars = TEMPLATE_DEFAULTS.copy()
+    template_vars.update({
+        'message': f"Alas, brave {game_state['player_name']}, your journey has come to an end!\nThough you fell, you achieved a noble score of {game_state['stats']['score']} and gained {game_state['stats']['xp']} XP!\nPerhaps another adventure awaits?",
+        'show_restart': True,
+        'show_choices': False,
+        'show_monster_choices': False,
+        'show_treasure_choices': False,
+        'event_type': EVENT_TYPES["GAMEOVER"],
+        'player_name': game_state['player_name'],
+        'player_stats': game_state['stats']
+    })
+    
+    # Record the death in leaderboard
+    add_to_leaderboard(
+        player_name=game_state['player_name'],
+        score=game_state['stats']['score'],
+        xp=game_state['stats']['xp'],
+        victory_type="DIED",
+        health=game_state['stats']['health']
+    )
+    game_states.pop(get_session_id(), None)  # Clear game state
+    
+    return template('game', **template_vars)
+
 # Initialize app with middleware
 app = default_app()
 app.install(log_to_logger)

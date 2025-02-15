@@ -4,6 +4,214 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monsters and Treasure</title>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-69G95PRCQQ"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-69G95PRCQQ');
+        
+        // Get detailed location data
+        async function getApproximateLocation() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                return {
+                    country: data.country_name,
+                    region: data.region,
+                    city: data.city,
+                    state: data.region_code,
+                    timezone: data.timezone,
+                    latitude: Math.round(data.latitude), // Round to avoid precise location
+                    longitude: Math.round(data.longitude), // Round to avoid precise location
+                    postal: data.postal ? data.postal.split('')[0] + 'XXX' : null // First digit only for privacy
+                };
+            } catch (error) {
+                console.log('Location fetch failed:', error);
+                return null;
+            }
+        }
+        
+        // Enhanced event tracking with detailed location
+        async function trackGameEvent(event_name, event_params = {}) {
+            // Add common parameters
+            const commonParams = {
+                player_name: '{{player_name if player_name else "anonymous"}}',
+                screen_name: '{{event_type if event_type else "welcome"}}',
+                session_id: localStorage.getItem('session_id') || Math.random().toString(36).substring(7)
+            };
+            
+            // Add or update location data every 24 hours
+            const lastLocationUpdate = localStorage.getItem('location_last_updated');
+            const needsLocationUpdate = !lastLocationUpdate || 
+                (Date.now() - parseInt(lastLocationUpdate)) > 24 * 60 * 60 * 1000;
+            
+            if (needsLocationUpdate) {
+                const locationData = await getApproximateLocation();
+                if (locationData) {
+                    localStorage.setItem('player_location', JSON.stringify(locationData));
+                    localStorage.setItem('location_last_updated', Date.now().toString());
+                }
+            }
+            
+            // Add location to tracking if available
+            const locationData = localStorage.getItem('player_location');
+            if (locationData) {
+                commonParams.location = JSON.parse(locationData);
+            }
+            
+            // Track regional play patterns
+            if (commonParams.location) {
+                const regionKey = `${commonParams.location.country}_${commonParams.location.state || commonParams.location.region}`;
+                const regionalStats = JSON.parse(localStorage.getItem('regional_stats') || '{}');
+                
+                if (!regionalStats[regionKey]) {
+                    regionalStats[regionKey] = {
+                        players: new Set([commonParams.player_name]),
+                        total_games: 0,
+                        combat_styles: { brave: 0, cautious: 0, balanced: 0 },
+                        favorite_actions: { fight: 0, run: 0, rest: 0, search_alone: 0, get_help: 0 }
+                    };
+                }
+                
+                // Update regional stats
+                const region = regionalStats[regionKey];
+                region.players.add(commonParams.player_name);
+                
+                if (event_name === 'game_over' || event_name === 'victory') {
+                    region.total_games++;
+                }
+                
+                if (event_params.choice) {
+                    region.favorite_actions[event_params.choice] = 
+                        (region.favorite_actions[event_params.choice] || 0) + 1;
+                }
+                
+                if (event_name === 'combat_choice') {
+                    const style = event_params.choice === 'fight' ? 'brave' : 
+                                event_params.choice === 'run' ? 'cautious' : 'balanced';
+                    region.combat_styles[style]++;
+                }
+                
+                // Convert Set to Array for storage
+                regionalStats[regionKey].players = Array.from(region.players);
+                localStorage.setItem('regional_stats', JSON.stringify(regionalStats));
+                
+                // Add regional insights to event
+                event_params.regional_insights = {
+                    region_total_games: region.total_games,
+                    region_player_count: region.players.length,
+                    region_combat_style: Object.entries(region.combat_styles)
+                        .sort((a, b) => b[1] - a[1])[0][0],
+                    region_favorite_action: Object.entries(region.favorite_actions)
+                        .sort((a, b) => b[1] - a[1])[0][0]
+                };
+            }
+            
+            // Store session_id if new
+            if (!localStorage.getItem('session_id')) {
+                localStorage.setItem('session_id', commonParams.session_id);
+            }
+            
+            // Track player statistics over time
+            const playerStats = JSON.parse(localStorage.getItem('player_stats') || '{}');
+            if (!playerStats[commonParams.player_name]) {
+                playerStats[commonParams.player_name] = {
+                    first_seen: new Date().toISOString(),
+                    games_played: 0,
+                    total_score: 0,
+                    total_xp: 0,
+                    best_score: 0,
+                    best_xp: 0
+                };
+            }
+            
+            // Update player stats if this is a game over or victory event
+            if (event_name === 'game_over' || event_name === 'victory') {
+                const stats = playerStats[commonParams.player_name];
+                stats.games_played++;
+                stats.total_score += parseInt(event_params.final_score || 0);
+                stats.total_xp += parseInt(event_params.final_xp || 0);
+                stats.best_score = Math.max(stats.best_score, parseInt(event_params.final_score || 0));
+                stats.best_xp = Math.max(stats.best_xp, parseInt(event_params.final_xp || 0));
+                localStorage.setItem('player_stats', JSON.stringify(playerStats));
+                
+                // Add player statistics to event
+                event_params.player_stats = stats;
+            }
+            
+            // Track turn count for the session
+            let turnCount = parseInt(localStorage.getItem('turn_count') || '0');
+            if (['combat_choice', 'treasure_choice', 'rest_choice', 'adventure_choice'].includes(event_name)) {
+                turnCount++;
+                localStorage.setItem('turn_count', turnCount);
+            }
+            
+            // Add fun metrics
+            const funMetrics = {
+                turn_count: turnCount,
+                time_since_start: localStorage.getItem('game_start') ? 
+                    (Date.now() - parseInt(localStorage.getItem('game_start'))) / 1000 : 0
+            };
+            
+            // Track achievements
+            if (event_name === 'combat_choice' && event_params.choice === 'fight' && !localStorage.getItem('first_blood')) {
+                gtag('event', 'achievement_unlocked', { achievement: 'first_blood' });
+                localStorage.setItem('first_blood', 'true');
+            }
+            
+            if (event_params.health && parseInt(event_params.health) < 10) {
+                gtag('event', 'achievement_unlocked', { achievement: 'close_call' });
+            }
+            
+            // Track combat style
+            if (event_name === 'combat_choice') {
+                let combatStyle = localStorage.getItem('combat_style') || 'balanced';
+                if (event_params.choice === 'run') {
+                    combatStyle = 'cautious';
+                } else if (event_params.choice === 'fight') {
+                    combatStyle = 'brave';
+                }
+                localStorage.setItem('combat_style', combatStyle);
+                funMetrics.combat_style = combatStyle;
+            }
+            
+            // Track treasure hunting success
+            if (event_name === 'treasure_choice') {
+                let treasuresFound = parseInt(localStorage.getItem('treasures_found') || '0');
+                let treasureAttempts = parseInt(localStorage.getItem('treasure_attempts') || '0');
+                
+                if (event_params.choice === 'search_alone' || event_params.choice === 'get_help') {
+                    treasureAttempts++;
+                    localStorage.setItem('treasure_attempts', treasureAttempts);
+                }
+                
+                if (event_type === 'treasure_found') {
+                    treasuresFound++;
+                    localStorage.setItem('treasures_found', treasuresFound);
+                }
+                
+                funMetrics.treasure_success_rate = treasuresFound / treasureAttempts;
+            }
+            
+            // Merge all parameters
+            const finalParams = { 
+                ...commonParams, 
+                ...event_params, 
+                ...funMetrics 
+            };
+            
+            // Track the event
+            gtag('event', event_name, finalParams);
+            console.log('Tracked event:', event_name, finalParams);
+        }
+        
+        // Initialize game start time if not set
+        if (!localStorage.getItem('game_start')) {
+            localStorage.setItem('game_start', Date.now().toString());
+        }
+    </script>
     <link rel="icon" type="image/png" href="/static/favicon/favicon.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/favicon.png">
     <link rel="stylesheet" href="/static/css/styles.css">
@@ -88,6 +296,19 @@
         .combat-outcome {
             margin: 0 auto;
         }
+
+        /* Add dynamic width classes */
+        .health-width-0 { width: 0%; }
+        .health-width-10 { width: 10%; }
+        .health-width-20 { width: 20%; }
+        .health-width-30 { width: 30%; }
+        .health-width-40 { width: 40%; }
+        .health-width-50 { width: 50%; }
+        .health-width-60 { width: 60%; }
+        .health-width-70 { width: 70%; }
+        .health-width-80 { width: 80%; }
+        .health-width-90 { width: 90%; }
+        .health-width-100 { width: 100%; }
     </style>
 </head>
 <body>
@@ -105,8 +326,7 @@
                         <div class="progress-bar health-bar" 
                              data-value="{{player_stats['health']}}" 
                              data-previous="{{previous_stats['health']}}"
-                             data-max="100"
-                             style="width: {{player_stats['health']}}%">
+                             data-max="100">
                         </div>
                     </div>
                 </div>
@@ -243,6 +463,52 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Track page view with enhanced context
+        trackGameEvent('screen_view', {
+            health: '{{player_stats["health"] if player_stats else 0}}',
+            score: '{{player_stats["score"] if player_stats else 0}}',
+            xp: '{{player_stats["xp"] if player_stats else 0}}'
+        });
+
+        // Track all button clicks with enhanced context
+        document.querySelectorAll('button[name="choice"]').forEach(button => {
+            button.addEventListener('click', function() {
+                const choice = this.value;
+                const eventParams = {
+                    choice: choice,
+                    health: '{{player_stats["health"] if player_stats else 0}}',
+                    score: '{{player_stats["score"] if player_stats else 0}}',
+                    xp: '{{player_stats["xp"] if player_stats else 0}}'
+                };
+
+                if (['fight', 'run'].includes(choice)) {
+                    trackGameEvent('combat_choice', eventParams);
+                } else if (['search_alone', 'get_help', 'ignore'].includes(choice)) {
+                    trackGameEvent('treasure_choice', eventParams);
+                } else if (choice === 'rest') {
+                    trackGameEvent('rest_choice', eventParams);
+                } else if (choice === 'adventure') {
+                    trackGameEvent('adventure_choice', eventParams);
+                }
+            });
+        });
+
+        // Track game over and victory events
+        % if event_type == 'gameover':
+            trackGameEvent('game_over', {
+                final_score: '{{player_stats["score"]}}',
+                final_xp: '{{player_stats["xp"]}}',
+                total_health: '{{player_stats["health"]}}'
+            });
+        % elif victory_type:
+            trackGameEvent('victory', {
+                victory_type: '{{victory_type}}',
+                final_score: '{{player_stats["score"]}}',
+                final_xp: '{{player_stats["xp"]}}',
+                total_health: '{{player_stats["health"]}}'
+            });
+        % end
+
         // Add animation for game images
         function showGameImages() {
             const images = document.querySelectorAll('.game-image');
@@ -297,6 +563,20 @@
             childList: true, 
             subtree: true 
         });
+
+        // Function to update progress bar widths
+        function updateProgressWidth(bar, value, max) {
+            // Remove all width classes
+            bar.classList.forEach(className => {
+                if (className.startsWith('health-width-')) {
+                    bar.classList.remove(className);
+                }
+            });
+            
+            // Calculate percentage and round to nearest 10
+            const percentage = Math.round((value / max) * 10) * 10;
+            bar.classList.add(`health-width-${percentage}`);
+        }
     });
     </script>
 </body>
