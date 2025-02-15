@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   web:
-    image: charlidan/monsters-and-treasure:latest
+    build: .
     ports:
       - "8000:8000"
     volumes:

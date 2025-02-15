@@ -23,5 +23,10 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml build
-            docker-compose -f docker-compose.prod.yml up -d 
+            docker-compose -f docker-compose.prod.yml build --no-cache
+            docker-compose -f docker-compose.prod.yml up -d
+            echo "Waiting for container to start..."
+            sleep 10
+            docker ps
+            echo "Checking container logs..."
+            docker-compose -f docker-compose.prod.yml logs --tail=50 
