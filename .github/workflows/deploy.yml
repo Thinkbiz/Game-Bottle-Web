@@ -36,12 +36,10 @@ jobs:
             ls -la
             git status || echo "Not a git repository"
             
-            echo "=== DOCKER STATUS BEFORE ==="
-            docker ps -a
-            docker-compose -f docker-compose.prod.yml ps
-            
-            echo "=== STOPPING CONTAINERS ==="
-            docker-compose -f docker-compose.prod.yml down || true
+            echo "=== STOPPING AND CLEANING UP CONTAINERS ==="
+            docker-compose -f docker-compose.prod.yml down --volumes --remove-orphans || true
+            docker rm -f docker-game_web_1 || true
+            docker system prune -f
             
             echo "=== UPDATING CODE ==="
             git fetch origin main || {
@@ -52,6 +50,10 @@ jobs:
               echo "Failed to reset to main"
               exit 1
             }
+            
+            echo "=== CREATING REQUIRED DIRECTORIES ==="
+            mkdir -p data logs
+            chmod 777 data logs
             
             echo "=== DOCKER BUILD ==="
             docker-compose -f docker-compose.prod.yml build --no-cache 2>&1
