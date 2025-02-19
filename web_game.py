@@ -207,6 +207,10 @@ def save_game_state(state: Dict[str, Any]) -> None:
 
 def determine_victory_type(stats):
     """Determine the type of victory based on player stats."""
+    # First check if player has enough XP for victory
+    if stats['xp'] < GAME_THRESHOLDS["VICTORY_XP"]:
+        return None
+        
     if stats['health'] > GAME_THRESHOLDS["PERFECT_HEALTH"] and stats['score'] > GAME_THRESHOLDS["PERFECT_SCORE"]:
         return VICTORY_TYPES["PERFECT"]
     elif stats['health'] > GAME_THRESHOLDS["GLORIOUS_HEALTH"]:

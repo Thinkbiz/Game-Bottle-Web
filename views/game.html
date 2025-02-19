@@ -270,8 +270,7 @@
     <style>
         .game-stats {
             display: flex;
-            flex-direction: row;
-            justify-content: space-between;
+            align-items: stretch;
             gap: 1rem;
             padding: 1.5rem;
             background: rgba(255, 255, 255, 0.8);
@@ -285,6 +284,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
+            justify-content: flex-start;
             gap: 0.5rem;
             min-width: 0;
         }
@@ -295,21 +295,32 @@
             align-items: center;
             font-weight: 600;
             color: #333;
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+            height: 1.5rem;
         }
 
         .progress-container {
+            position: relative;
             width: 100%;
-            height: 12px;
+            height: 8px;
+            margin-top: auto;
+            margin-bottom: 0;
             background: #e5e7eb;
-            border-radius: 6px;
+            border-radius: 4px;
             overflow: hidden;
+            transform: translateZ(0);
+            will-change: transform;
         }
 
         .progress-bar {
-            height: 100%;
+            position: absolute;
+            inset: 0;
             background: #1e40af;
-            border-radius: 6px;
-            transition: width 0.3s ease;
+            border-radius: 4px;
+            transform-origin: left center;
+            transition: width 0.3s ease, background-color 1s ease;
         }
 
         .progress-bar.increase {
@@ -327,6 +338,7 @@
             min-width: 3em;
             text-align: right;
             margin-left: 0.5rem;
+            line-height: 1.5;
         }
 
         /* Add animation for game images */
@@ -375,10 +387,11 @@
                         <span class="stat-value">{{player_stats['health'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar health-bar health-width-{{(player_stats['health'] if player_stats else 0) // 10 * 10}}" 
+                        <div class="progress-bar health-bar" 
                              data-value="{{player_stats['health'] if player_stats else 0}}" 
                              data-previous="{{previous_stats['health'] if previous_stats else 0}}"
-                             data-max="100">
+                             data-max="100"
+                             style="width: 100%">
                         </div>
                     </div>
                 </div>
@@ -388,10 +401,11 @@
                         <span class="stat-value">{{player_stats['score'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar score-bar health-width-{{min(100, (player_stats['score'] if player_stats else 0) / max(100, (player_stats['score'] if player_stats else 100)) * 100) // 10 * 10}}"
+                        <div class="progress-bar score-bar"
                              data-value="{{player_stats['score'] if player_stats else 0}}"
                              data-previous="{{previous_stats['score'] if previous_stats else 0}}"
-                             data-max="100">
+                             data-max="100"
+                             style="width: 100%">
                         </div>
                     </div>
                 </div>
@@ -401,10 +415,11 @@
                         <span class="stat-value">{{player_stats['xp'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar xp-bar health-width-{{((player_stats['xp'] if player_stats else 0) / 200 * 100) // 10 * 10}}"
+                        <div class="progress-bar xp-bar"
                              data-value="{{player_stats['xp'] if player_stats else 0}}"
                              data-previous="{{previous_stats['xp'] if previous_stats else 0}}"
-                             data-max="200">
+                             data-max="200"
+                             style="width: 100%">
                         </div>
                     </div>
                 </div>
@@ -552,7 +567,7 @@
             });
         % elif victory_type:
             trackGameEvent('victory', {
-                victory_type: '{{victory_type}}',
+                victory_type: '{{ victory_type }}',
                 final_score: '{{player_stats["score"]}}',
                 final_xp: '{{player_stats["xp"]}}',
                 total_health: '{{player_stats["health"]}}'
@@ -582,7 +597,8 @@
                 const currentValue = parseFloat(bar.getAttribute('data-value'));
                 const previousValue = parseFloat(bar.getAttribute('data-previous'));
                 
-                if (currentValue !== previousValue) {
+                // Only animate if the values are different AND not undefined/null
+                if (!isNaN(currentValue) && !isNaN(previousValue) && currentValue !== previousValue) {
                     // Remove existing classes first
                     bar.classList.remove('increase', 'decrease');
                     
@@ -608,9 +624,20 @@
         updateProgressBars();
         
         // Also run when the page content updates
-        const observer = new MutationObserver(updateProgressBars);
+        const observer = new MutationObserver(mutations => {
+            // Only update if data attributes changed
+            const shouldUpdate = mutations.some(mutation => 
+                mutation.type === 'attributes' && 
+                (mutation.attributeName === 'data-value' || mutation.attributeName === 'data-previous')
+            );
+            if (shouldUpdate) {
+                updateProgressBars();
+            }
+        });
+        
         observer.observe(document.body, { 
-            childList: true, 
+            attributes: true,
+            attributeFilter: ['data-value', 'data-previous'],
             subtree: true 
         });
 
@@ -627,6 +654,16 @@
             const percentage = Math.round((value / max) * 10) * 10;
             bar.classList.add(`health-width-${percentage}`);
         }
+
+        // Update progress bar widths
+        document.querySelectorAll('.progress-bar').forEach(bar => {
+            const value = parseFloat(bar.getAttribute('data-value'));
+            const max = parseFloat(bar.getAttribute('data-max'));
+            const width = bar.classList.contains('xp-bar') ? 
+                         Math.min(100, (value / 2)) : 
+                         Math.min(100, value);
+            bar.style.width = width + '%';
+        });
     });
     </script>
 </body>
