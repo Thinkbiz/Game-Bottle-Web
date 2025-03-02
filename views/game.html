@@ -35,6 +35,19 @@
         
         // Session ID management functions
         function getOrCreateSessionId() {
+            // First check for server-side cookie session
+            const cookieSessionId = document.cookie.split('; ')
+                .find(row => row.startsWith('session_id='))
+                ?.split('=')[1];
+                
+            if (cookieSessionId) {
+                console.log('Using server session ID:', cookieSessionId);
+                // Sync with localStorage for backup
+                localStorage.setItem('session_id', cookieSessionId);
+                return cookieSessionId;
+            }
+            
+            // Fallback to localStorage
             const existingId = localStorage.getItem('session_id');
             if (existingId) {
                 return existingId;
@@ -597,22 +610,22 @@
                 }
             });
         });
-
         // Track game over and victory events
-        % if event_type == 'gameover':
+        if ('{{ event_type }}' === 'gameover') {
             trackGameEvent('game_over', {
-                final_score: '{{player_stats["score"]}}',
-                final_xp: '{{player_stats["xp"]}}',
-                total_health: '{{player_stats["health"]}}'
+                final_score: '{{ player_stats["score"] if player_stats else 0 }}',
+                final_xp: '{{ player_stats["xp"] if player_stats else 0 }}',
+                total_health: '{{ player_stats["health"] if player_stats else 0 }}'
             });
-        % elif victory_type:
+        } else if ('{{ event_type }}' === 'victory') {
             trackGameEvent('victory', {
                 victory_type: '{{ victory_type }}',
-                final_score: '{{player_stats["score"]}}',
-                final_xp: '{{player_stats["xp"]}}',
-                total_health: '{{player_stats["health"]}}'
+                final_score: '{{ player_stats["score"] if player_stats else 0 }}',
+                final_xp: '{{ player_stats["xp"] if player_stats else 0 }}',
+                total_health: '{{ player_stats["health"] if player_stats else 0 }}'
             });
-        % end
+        }
+        // Fixed the syntax error by replacing '% end' with '}' to properly close the 'else if' block
 
         // Add animation for game images
         function showGameImages() {

@@ -1,0 +1,31 @@
+def error_boundary(route_func):
+    """Decorator to catch and handle all errors in routes"""
+    def wrapper(*args, **kwargs):
+        try:
+            return route_func(*args, **kwargs)
+        except HTTPError as he:
+            # Log HTTP errors but let them propagate to be handled by bottle's error handlers
+            logger.warning(f"HTTP error in {route_func.__name__}: {str(he)}")
+            raise he
+        except sqlite3.Error as dbe:
+            # Database errors
+            logger.error(f"Database error in {route_func.__name__}: {str(dbe)}", exc_info=True)
+            response.status = 500
+            return template('error', 
+                           error_code=500, 
+                           title="Database Error", 
+                           message="An unexpected database error has occurred. Our wizards have been notified!")
+        except Exception as e:
+            # All other errors
+            logger.error(f"Unhandled exception in {route_func.__name__}: {str(e)}", exc_info=True)
+            
+            # Get current session info for better diagnostics
+            session_id = request.get_cookie(SESSION_COOKIE_NAME, 'unknown')
+            logger.error(f"Error context - Session: {session_id}, URL: {request.url}, Method: {request.method}")
+            
+            response.status = 500
+            return template('error', 
+                           error_code=500, 
+                           title="Server Error", 
+                           message="An unexpected error has occurred. The ancient scrolls speak of such anomalies... Our wizards have been notified!")
+    return wrapper 
