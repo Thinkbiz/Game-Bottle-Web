@@ -1,10 +1,11 @@
 import sqlite3
 from dataclasses import dataclass
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta
 import os
 import secrets
 import hashlib
+import json
 
 # Ensure data directory exists
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -101,6 +102,18 @@ def init_db():
          treasure_attempts INTEGER DEFAULT 0,
          combat_style TEXT DEFAULT 'balanced',
          last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+    ''')
+    
+    # Create game sessions table for persistent game state
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS game_sessions
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+         session_id TEXT UNIQUE,
+         player_name TEXT,
+         game_state TEXT,
+         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+         expiry TIMESTAMP)
     ''')
     
     conn.commit()
@@ -302,6 +315,15 @@ def update_player_session_stats(player_name: str, session_id: str, stats_update:
     c = conn.cursor()
     
     try:
+        # Defensive code to handle string values
+        if isinstance(stats_update, str):
+            print(f"Warning: String passed to update_player_session_stats instead of dict: {stats_update}")
+            # Convert string to a simple counter with value 1
+            stats_update = {stats_update: 1}
+        elif not isinstance(stats_update, dict):
+            print(f"Warning: Non-dict passed to update_player_session_stats: {type(stats_update)}")
+            return
+            
         # First, try to insert a new session if it doesn't exist
         c.execute('''
             INSERT OR IGNORE INTO player_session_stats (player_name, session_id)
@@ -313,7 +335,7 @@ def update_player_session_stats(player_name: str, session_id: str, stats_update:
         update_values = []
         for key, value in stats_update.items():
             if key in ['games_played', 'total_score', 'total_xp', 'best_score', 'best_xp', 
-                      'turn_count', 'treasures_found', 'treasure_attempts']:
+                      'turn_count', 'treasures_found', 'treasure_attempts', 'victory', 'game_over']:
                 update_fields.append(f"{key} = {key} + ?")
                 update_values.append(value)
             elif key in ['combat_style']:
@@ -353,5 +375,105 @@ def get_player_session_stats(player_name: str, session_id: str) -> dict:
     except sqlite3.Error as e:
         print(f"Database error in get_player_session_stats: {e}")
         return None
+    finally:
+        conn.close()
+
+def get_game_state_from_db(session_id: str) -> Dict[str, Any]:
+    """
+    Retrieve game state from database for a given session ID
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Get game state from database
+        c.execute('''
+            SELECT game_state 
+            FROM game_sessions
+            WHERE session_id = ? AND (expiry IS NULL OR expiry > CURRENT_TIMESTAMP)
+        ''', (session_id,))
+        
+        result = c.fetchone()
+        if result and result[0]:
+            # Update last_updated timestamp
+            c.execute('''
+                UPDATE game_sessions
+                SET last_updated = CURRENT_TIMESTAMP
+                WHERE session_id = ?
+            ''', (session_id,))
+            conn.commit()
+            
+            # Parse and return the game state
+            return json.loads(result[0])
+        
+        return {}
+    except sqlite3.Error as e:
+        print(f"Database error in get_game_state_from_db: {e}")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error in get_game_state_from_db: {e}")
+        return {}
+    finally:
+        conn.close()
+
+def save_game_state_to_db(session_id: str, player_name: str, state: Dict[str, Any], 
+                         expiry_days: int = 30) -> bool:
+    """
+    Save game state to database for a given session ID
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Convert state to JSON
+        state_json = json.dumps(state)
+        
+        # Calculate expiry date
+        expiry = (datetime.now() + timedelta(days=expiry_days)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Insert or update game state
+        c.execute('''
+            INSERT INTO game_sessions 
+            (session_id, player_name, game_state, last_updated, expiry)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)
+            ON CONFLICT(session_id) DO UPDATE SET
+                player_name = excluded.player_name,
+                game_state = excluded.game_state,
+                last_updated = CURRENT_TIMESTAMP,
+                expiry = excluded.expiry
+        ''', (session_id, player_name, state_json, expiry))
+        
+        conn.commit()
+        return True
+    except sqlite3.Error as e:
+        print(f"Database error in save_game_state_to_db: {e}")
+        return False
+    finally:
+        conn.close()
+
+def cleanup_expired_sessions(days_old: int = 30) -> int:
+    """
+    Remove expired game sessions older than specified days
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        # Calculate the cutoff date
+        cutoff_date = (datetime.now() - timedelta(days=days_old)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Delete expired sessions
+        c.execute('''
+            DELETE FROM game_sessions
+            WHERE expiry < CURRENT_TIMESTAMP OR
+                  (expiry IS NULL AND last_updated < ?)
+        ''', (cutoff_date,))
+        
+        deleted_count = c.rowcount
+        conn.commit()
+        return deleted_count
+    except sqlite3.Error as e:
+        print(f"Database error in cleanup_expired_sessions: {e}")
+        return 0
     finally:
         conn.close()
