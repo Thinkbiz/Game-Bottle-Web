@@ -25,8 +25,14 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
-    # Drop existing tables to start fresh
-    c.execute('DROP TABLE IF EXISTS leaderboard')
+    # Create players table (previous missing)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS players
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+         name TEXT UNIQUE,
+         last_played TIMESTAMP,
+         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+    ''')
     
     # Create leaderboard table
     c.execute('''
@@ -100,6 +106,7 @@ def init_db():
          turn_count INTEGER DEFAULT 0,
          treasures_found INTEGER DEFAULT 0,
          treasure_attempts INTEGER DEFAULT 0,
+         combat_encounters INTEGER DEFAULT 0,
          combat_style TEXT DEFAULT 'balanced',
          last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
     ''')
@@ -372,7 +379,7 @@ def update_player_session_stats(player_name: str, session_id: str, stats_update:
         update_values = []
         for key, value in stats_update.items():
             if key in ['games_played', 'total_score', 'total_xp', 'best_score', 'best_xp', 
-                      'turn_count', 'treasures_found', 'treasure_attempts', 'victory', 'game_over']:
+                      'turn_count', 'treasures_found', 'treasure_attempts', 'victory', 'game_over', 'combat_encounters']:
                 update_fields.append(f"{key} = {key} + ?")
                 update_values.append(value)
             elif key in ['combat_style']:
@@ -400,6 +407,7 @@ def get_player_session_stats(player_name: str, session_id: str) -> dict:
     c = conn.cursor()
     
     try:
+        print(f"DEBUG DB: Trying to get session stats for player {player_name} with session_id {session_id}")
         c.execute('''
             SELECT * FROM player_session_stats 
             WHERE player_name = ? AND session_id = ?
@@ -407,7 +415,33 @@ def get_player_session_stats(player_name: str, session_id: str) -> dict:
         row = c.fetchone()
         if row:
             columns = [description[0] for description in c.description]
-            return dict(zip(columns, row))
+            result = dict(zip(columns, row))
+            print(f"DEBUG DB: Found session stats: {result}")
+            
+            # Check if this is a brand new session with no activity
+            if result.get('turn_count', 0) == 0 and result.get('games_played', 0) == 0:
+                print(f"DEBUG DB: This appears to be a brand new session with no activity")
+                return None
+            
+            return result
+        
+        # Try with just player_name if no exact match, but only for sessions
+        # that aren't the current one (to prevent treating a new player as returning)
+        print(f"DEBUG DB: No exact match, trying with just player_name: {player_name}")
+        c.execute('''
+            SELECT * FROM player_session_stats 
+            WHERE player_name = ? AND session_id != ?
+            ORDER BY last_updated DESC
+            LIMIT 1
+        ''', (player_name, session_id))
+        row = c.fetchone()
+        if row:
+            columns = [description[0] for description in c.description]
+            result = dict(zip(columns, row))
+            print(f"DEBUG DB: Found player stats from previous session: {result}")
+            return result
+            
+        print(f"DEBUG DB: No session stats found for player {player_name}")
         return None
     except sqlite3.Error as e:
         print(f"Database error in get_player_session_stats: {e}")
@@ -463,16 +497,20 @@ def save_game_state_to_db(session_id: str, player_name: str, state: Dict[str, An
         c = conn.cursor()
         
         # Ensure player exists in players table first
-        c.execute('SELECT name FROM players WHERE name = ?', (player_name,))
-        player_exists = c.fetchone()
-        
-        if not player_exists:
-            # Create player if they don't exist
-            c.execute(
-                'INSERT INTO players (name, last_played, created_at) VALUES (?, ?, ?)',
-                (player_name, datetime.now().isoformat(), datetime.now().isoformat())
-            )
-            print(f"Created new player record for {player_name} in save_game_state_to_db")
+        try:
+            c.execute('SELECT name FROM players WHERE name = ?', (player_name,))
+            player_exists = c.fetchone()
+            
+            if not player_exists:
+                # Create player if they don't exist
+                c.execute(
+                    'INSERT INTO players (name, last_played, created_at) VALUES (?, ?, ?)',
+                    (player_name, datetime.now().isoformat(), datetime.now().isoformat())
+                )
+                print(f"Created new player record for {player_name} in save_game_state_to_db")
+        except sqlite3.Error as e:
+            print(f"Warning in save_game_state_to_db when checking player: {e}")
+            # Continue anyway - we can save game state even if we can't update player record
         
         # Convert state to JSON
         state_json = json.dumps(state)
@@ -526,3 +564,6 @@ def cleanup_expired_sessions(days_old: int = 30) -> int:
         return 0
     finally:
         conn.close()
+
+# Ensure database is initialized at import time
+init_db()
