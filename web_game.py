@@ -309,8 +309,15 @@ def generate_csrf_token() -> str:
     """Generate a new CSRF token"""
     return secrets.token_urlsafe(32)
 
-def validate_csrf_token(token: str) -> bool:
-    """Validate the CSRF token"""
+def validate_csrf_token(token: str = None) -> bool:
+    """Validate the CSRF token from form data or headers"""
+    if not token:
+        # Check form data first
+        token = request.forms.get('csrf_token')
+        if not token:
+            # Then check headers
+            token = request.headers.get('X-CSRF-Token')
+    
     expected_token = request.get_cookie('csrf_token')
     return token and expected_token and secrets.compare_digest(token, expected_token)
 
@@ -319,8 +326,7 @@ def csrf_protection(route_func):
     @wraps(route_func)
     def wrapper(*args, **kwargs):
         if request.method in ('POST', 'PUT', 'DELETE'):
-            token = request.forms.get('csrf_token')
-            if not validate_csrf_token(token):
+            if not validate_csrf_token():
                 logger.warning(f"CSRF validation failed for {request.path}")
                 response.status = 403
                 return {'error': 'Invalid CSRF token'}
@@ -404,6 +410,53 @@ def security_headers(route_func):
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         return route_func(*args, **kwargs)
     return wrapper
+
+def get_template_cookie(name: str, default: str = '') -> str:
+    """Safe function to get cookie value in templates"""
+    return request.cookies.get(name, default)
+
+def set_template_cookie(name: str, value: str, **options) -> None:
+    """Safe function to set cookie value in templates"""
+    response.set_cookie(name, value, **options)
+
+def template_csrf_token() -> str:
+    """Get or generate CSRF token for templates"""
+    token = request.get_cookie('csrf_token')
+    if not token:
+        token = generate_csrf_token()
+        response.set_cookie(
+            'csrf_token',
+            token,
+            httponly=True,
+            secure=SESSION_COOKIE_SECURE,
+            path='/'
+        )
+    return token
+
+def template_validate_input(value, pattern=r'^[a-zA-Z0-9_-]{1,32}$'):
+    """Helper function to validate input in templates"""
+    return bool(re.match(pattern, str(value))) if value else False
+
+def template_get_session_id():
+    """Helper function to get session ID in templates"""
+    return get_session_id()
+
+def template_get_event_type(victory_type=None):
+    """Helper function to get event type in templates"""
+    return get_event_type(victory_type)
+
+# Update TEMPLATE_DEFAULTS to include helper functions
+TEMPLATE_DEFAULTS.update({
+    'get_template_cookie': get_template_cookie,
+    'set_template_cookie': set_template_cookie,
+    'csrf_token': template_csrf_token,
+    'validate_input': template_validate_input,
+    'session_id': template_get_session_id,
+    'get_event_type': template_get_event_type,
+    'DEBUG': DEBUG,
+    'EVENT_TYPES': EVENT_TYPES,
+    'VICTORY_TYPES': VICTORY_TYPES
+})
 
 @route('/')
 @security_headers
@@ -566,54 +619,55 @@ def abandon_quest():
         response.status = 500
         return {'error': 'Internal server error'}
 
-# Modify the start_game route to handle username choice
 @route('/start', method=['GET', 'POST'])
+@security_headers
+@validate_request
+@csrf_protection
+@safe_template
 def start_game():
     """Start or restart a game"""
     session_id = get_session_id()
     session_logger = get_session_logger('game', session_id)
     
     if request.method == 'POST':
-        # Log all form data
-        session_logger.info(f"Form data: {dict(request.forms)}")
-        
+        # Get player name from form
+        player_name = request.forms.get('player_name', '').strip()
         username_choice = request.forms.get('username_choice')
-        current_state = get_game_state()
         
-        session_logger.info(f"POST request to start_game. Username choice: {username_choice}")
-        session_logger.info(f"Current state: {json.dumps(current_state)}")
+        if username_choice == 'new':
+            player_name = request.forms.get('new_username', '').strip()
         
-        if username_choice == 'keep' and current_state and 'player_name' in current_state:
-            player_name = current_state['player_name']
-        else:
-            player_name = request.forms.get('new_username', request.forms.get('player_name', '')).strip()
-        
-        session_logger.info(f"Player name after processing: {player_name}")
-        
-        if not player_name:
-            session_logger.warning("No player name provided")
+        # Validate player name
+        if not player_name or not template_validate_input(player_name):
+            session_logger.warning(f"Invalid player name attempted: {player_name}")
             template_vars = TEMPLATE_DEFAULTS.copy()
-            template_vars['show_name_input'] = True
-            template_vars['error_message'] = "Please enter a valid username"
+            template_vars.update({
+                'message': "Invalid player name. Please use only letters, numbers, underscores, and hyphens (max 32 characters).",
+                'show_name_input': True
+            })
             return template('views/game', **template_vars)
         
-        session_logger.info(f"Starting new game for player: {player_name}")
-        
-        # Clear previous game state and start fresh
+        # Create new game state
         state = {
             'player_name': player_name,
             'stats': DEFAULT_STATS.copy(),
             'previous_stats': DEFAULT_STATS.copy(),
-            'events': []
+            'game_over': False
         }
         
-        # Save the new game state
-        save_success = save_game_state(state)
-        session_logger.info(f"Game state save result: {save_success}")
+        # Save the state
+        save_game_state(state)
         
-        # Verify the save by reading it back
+        # Verify the state was saved correctly
         verify_state = get_game_state()
-        session_logger.info(f"Verified state after save: {json.dumps(verify_state)}")
+        if not verify_state or verify_state.get('player_name') != player_name:
+            session_logger.error(f"Failed to save game state for player {player_name}")
+            template_vars = TEMPLATE_DEFAULTS.copy()
+            template_vars.update({
+                'message': "An error occurred starting your game. Please try again.",
+                'show_name_input': True
+            })
+            return template('views/game', **template_vars)
         
         # Update session stats
         try:
@@ -645,6 +699,10 @@ def start_game():
         return template('views/game', **template_vars)
 
 @route('/victory/<victory_type>')
+@security_headers
+@validate_request
+@csrf_protection
+@safe_template
 def victory_page(victory_type):
     """Display victory page with appropriate type"""
     session_id = get_session_id()
@@ -700,6 +758,10 @@ def victory_page(victory_type):
     return template('views/game', **template_vars)
 
 @route('/game_over')
+@security_headers
+@validate_request
+@csrf_protection
+@safe_template
 def game_over():
     """Display game over page"""
     session_id = get_session_id()
@@ -745,6 +807,10 @@ def game_over():
     return template('views/game', **template_vars)
 
 @route('/choice', method='POST')
+@security_headers
+@validate_request
+@csrf_protection
+@safe_template
 def make_choice():
     """Process player choice and update game state"""
     session_id = get_session_id()
@@ -997,6 +1063,9 @@ def serve_static(filename):
     return response
 
 @route('/leaderboard')
+@security_headers
+@validate_request
+@safe_template
 def show_leaderboard():
     leaderboard_entries = get_leaderboard(10)  # Get top 10
     return template('leaderboard', entries=leaderboard_entries)
@@ -1121,6 +1190,9 @@ def get_region(region_key):
         return {'error': 'Internal server error'}
 
 @route('/api/achievements', method='POST')
+@security_headers
+@validate_request
+@csrf_protection
 def record_achievement():
     """Record a player achievement"""
     try:
@@ -1140,6 +1212,9 @@ def record_achievement():
         return {'error': 'Internal server error'}
 
 @route('/api/stats/session', method='POST')
+@security_headers
+@validate_request
+@csrf_protection
 def update_session():
     """Update session statistics"""
     try:
@@ -1164,6 +1239,8 @@ def update_session():
         return {'error': 'Internal server error'}
 
 @route('/api/stats/session/<player_name>/<session_id>', method='GET')
+@security_headers
+@validate_request
 def get_session(player_name, session_id):
     """Get session statistics"""
     try:
