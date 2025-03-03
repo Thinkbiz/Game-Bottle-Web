@@ -33,27 +33,16 @@
             }
         }
         
-        // Session ID management functions
+        // Session ID management for the game
         function getOrCreateSessionId() {
-            // First check for server-side cookie session
             const cookieSessionId = '{{ get_template_cookie("session_id", "") }}';
-            
             if (cookieSessionId) {
-                console.log('Using server session ID:', cookieSessionId);
-                // Sync with localStorage for backup
-                localStorage.setItem('session_id', cookieSessionId);
                 return cookieSessionId;
+            } else {
+                const newSessionId = Math.floor(Math.random() * 10000000).toString();
+                document.cookie = `session_id=${newSessionId}; path=/; max-age=86400; SameSite=Strict`;
+                return newSessionId;
             }
-            
-            // Fallback to localStorage
-            const existingId = localStorage.getItem('session_id');
-            if (existingId) {
-                return existingId;
-            }
-            
-            const newId = generateUniqueSessionId();
-            localStorage.setItem('session_id', newId);
-            return newId;
         }
 
         // Enhanced security for session ID generation
@@ -710,7 +699,6 @@
             <div class="game-options">
                 % if show_name_input:
                 <form id="playerForm" method="POST" action="/start" class="space-y-4">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="text" name="player_name" placeholder="Enter your name" required class="input w-full" pattern="^[a-zA-Z0-9_-]{1,32}$">
                     <button type="submit" class="btn-primary w-full">Start Adventure</button>
                 </form>
@@ -718,7 +706,6 @@
                 
                 % if show_restart:
                 <form id="continueForm" method="POST" action="/continue" class="space-y-4">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="player_name" value="{{player_name}}">
                     <button type="submit" class="btn-primary w-full">Restart Adventure</button>
                 </form>
@@ -726,7 +713,6 @@
                 
                 % if show_choices:
                 <form action="/choice" method="post" class="space-y-3">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Continue Adventure</button>
                     <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
                 </form>
@@ -734,7 +720,6 @@
 
                 % if show_treasure_choices:
                 <form action="/choice" method="post" class="space-y-3">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" name="choice" value="search_alone" class="btn-primary w-full">Search Alone</button>
                     <button type="submit" name="choice" value="get_help" class="btn-secondary w-full">Get Help (10 points)</button>
                     <button type="submit" name="choice" value="ignore" class="btn-secondary w-full">Ignore</button>
@@ -743,7 +728,6 @@
 
                 % if show_monster_choices:
                 <form action="/choice" method="post" class="space-y-3">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" name="choice" value="fight" class="btn-primary w-full">Fight</button>
                     <button type="submit" name="choice" value="run" class="btn-secondary w-full">Run</button>
                 </form>
@@ -913,23 +897,21 @@
         }
 
         function abandonQuest() {
-            fetch('/abandon', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    player_name: '{{player_name}}',
-                    session_id: getOrCreateSessionId()
-                })
-            }).then(response => {
-                if (response.ok) {
-                    window.location.href = '/';
-                }
-            });
+            // Create and submit a form instead of using fetch with JSON
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/abandon';
+            
+            const playerNameInput = document.createElement('input');
+            playerNameInput.type = 'hidden';
+            playerNameInput.name = 'player_name';
+            playerNameInput.value = '{{player_name}}';
+            form.appendChild(playerNameInput);
+            
+            document.body.appendChild(form);
+            form.submit();
         }
-
+        
         // Enable/disable new username input based on radio selection
         document.querySelectorAll('input[name="username_choice"]').forEach(radio => {
             radio.addEventListener('change', function() {

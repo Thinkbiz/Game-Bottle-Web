@@ -11,6 +11,7 @@ services:
       - app-logs:/app/logs
     environment:
       - DEVELOPMENT=0
+    user: "root:root"  # Temporarily use root to ensure write permissions
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
@@ -22,6 +23,12 @@ services:
         limits:
           cpus: '1'
           memory: 512M
+    command: >
+      bash -c "
+        mkdir -p /app/data /app/logs && 
+        chmod -R 777 /app/data /app/logs && 
+        chown -R gameuser:gameuser /app/data /app/logs &&
+        su -s /bin/bash gameuser -c 'gunicorn --config gunicorn.conf.py --bind 0.0.0.0:8000 --worker-class sync --workers 4 --timeout 30 --keep-alive 2 --max-requests 1000 --max-requests-jitter 50 --limit-request-line 4096 --limit-request-fields 100 --limit-request-field_size 8190 --forwarded-allow-ips \"*\" web_game:app'"
 
 volumes:
   game-data:

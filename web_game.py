@@ -1,4 +1,4 @@
-from bottle import route, run, template, static_file, request, redirect, response, default_app, error, HTTPError
+from bottle import route, run, template, static_file, request, redirect, response, default_app, error, HTTPError, abort
 import random
 from database import (init_db, add_to_leaderboard, get_leaderboard, 
                      update_regional_stats, get_regional_stats,
@@ -95,6 +95,9 @@ DEFAULT_STATS: Dict[str, int] = {
     'score': 0,
     'xp': 0
 }
+
+# Constants for request validation
+MAX_REQUEST_SIZE = 10 * 1024  # 10KB size limit
 
 # Schedule periodic session cleanup
 def cleanup_old_sessions():
@@ -305,90 +308,50 @@ def log_to_logger(fn):
         return actual_response
     return _log_to_logger
 
-def generate_csrf_token() -> str:
-    """Generate a new CSRF token"""
-    return secrets.token_urlsafe(32)
-
-def validate_csrf_token(token: str = None) -> bool:
-    """Validate the CSRF token from form data or headers"""
-    if not token:
-        # Check form data first
-        token = request.forms.get('csrf_token')
-        if not token:
-            # Then check headers
-            token = request.headers.get('X-CSRF-Token')
-    
-    expected_token = request.get_cookie('csrf_token')
-    return token and expected_token and secrets.compare_digest(token, expected_token)
-
-def csrf_protection(route_func):
-    """CSRF protection middleware"""
-    @wraps(route_func)
-    def wrapper(*args, **kwargs):
-        if request.method in ('POST', 'PUT', 'DELETE'):
-            if not validate_csrf_token():
-                logger.warning(f"CSRF validation failed for {request.path}")
-                response.status = 403
-                return {'error': 'Invalid CSRF token'}
-        
-        # Generate new token for GET requests or after successful validation
-        token = generate_csrf_token()
-        response.set_cookie(
-            'csrf_token',
-            token,
-            httponly=True,
-            secure=SESSION_COOKIE_SECURE,
-            path='/'
-        )
-        
-        return route_func(*args, **kwargs)
-    return wrapper
-
 def validate_request(route_func):
     """Request validation middleware"""
     @wraps(route_func)
     def wrapper(*args, **kwargs):
         # Check request size
         content_length = request.get_header('Content-Length')
-        if content_length and int(content_length) > 10 * 1024:  # 10KB limit
+        if content_length and int(content_length) > MAX_REQUEST_SIZE:
             logger.warning(f"Request too large: {content_length} bytes")
             response.status = 413
             return {'error': 'Request too large'}
         
-        # Validate content type for POST/PUT requests
+        # Check content type for unsafe requests
         if request.method in ('POST', 'PUT'):
             content_type = request.get_header('Content-Type', '')
-            if not content_type.startswith(('application/x-www-form-urlencoded', 'multipart/form-data')):
+            if not (content_type.startswith('application/x-www-form-urlencoded') or 
+                    content_type.startswith('multipart/form-data')):
                 logger.warning(f"Invalid content type: {content_type}")
                 response.status = 415
-                return {'error': 'Invalid content type'}
+                return "Invalid content type"
         
-        # Validate player name input
-        player_name = request.forms.get('player_name', '')
-        if player_name and not re.match(r'^[a-zA-Z0-9_-]{1,32}$', player_name):
-            logger.warning(f"Invalid player name: {player_name}")
-            response.status = 400
-            return {'error': 'Invalid player name format'}
-        
-        # Rate limiting (simple in-memory implementation)
+        # Simple rate limiting
         client_ip = request.remote_addr
-        current_time = datetime.now()
-        if hasattr(request.app, 'rate_limit_data'):
-            rate_data = request.app.rate_limit_data
-            if client_ip in rate_data:
-                last_request, count = rate_data[client_ip]
-                if (current_time - last_request).seconds < 1:  # 1 second window
-                    if count >= 10:  # Max 10 requests per second
-                        logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-                        response.status = 429
-                        return {'error': 'Too many requests'}
-                    rate_data[client_ip] = (last_request, count + 1)
-                else:
-                    rate_data[client_ip] = (current_time, 1)
-            else:
+        current_time = time.time()
+        
+        # Get rate limit data
+        rate_data = getattr(request.app, 'rate_limit_data', {})
+        
+        if client_ip in rate_data:
+            last_request, count = rate_data[client_ip]
+            # Reset count if outside window
+            if current_time - last_request > 1:  # 1 second window
                 rate_data[client_ip] = (current_time, 1)
+            # Check if rate limit exceeded
+            elif count >= 10:  # Max 10 requests per second
+                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+                response.status = 429
+                return {'error': 'Too many requests'}
+            else:
+                rate_data[client_ip] = (current_time, count + 1)
         else:
-            request.app.rate_limit_data = {client_ip: (current_time, 1)}
+            rate_data[client_ip] = (current_time, 1)
+        
+        # Store updated rate limit data
+        request.app.rate_limit_data = rate_data
         
         return route_func(*args, **kwargs)
     return wrapper
@@ -419,20 +382,6 @@ def set_template_cookie(name: str, value: str, **options) -> None:
     """Safe function to set cookie value in templates"""
     response.set_cookie(name, value, **options)
 
-def template_csrf_token() -> str:
-    """Get or generate CSRF token for templates"""
-    token = request.get_cookie('csrf_token')
-    if not token:
-        token = generate_csrf_token()
-        response.set_cookie(
-            'csrf_token',
-            token,
-            httponly=True,
-            secure=SESSION_COOKIE_SECURE,
-            path='/'
-        )
-    return token
-
 def template_validate_input(value, pattern=r'^[a-zA-Z0-9_-]{1,32}$'):
     """Helper function to validate input in templates"""
     return bool(re.match(pattern, str(value))) if value else False
@@ -442,26 +391,23 @@ def template_get_session_id():
     return get_session_id()
 
 def template_get_event_type(victory_type=None):
-    """Helper function to get event type in templates"""
-    return get_event_type(victory_type)
+    """Get an event type identifier for template rendering"""
+    if victory_type:
+        return get_event_type(victory_type)
+    return "default"
 
-# Update TEMPLATE_DEFAULTS to include helper functions
+# Update TEMPLATE_DEFAULTS with helper functions
 TEMPLATE_DEFAULTS.update({
     'get_template_cookie': get_template_cookie,
     'set_template_cookie': set_template_cookie,
-    'csrf_token': template_csrf_token,
     'validate_input': template_validate_input,
-    'session_id': template_get_session_id,
+    'get_session_id': template_get_session_id,
     'get_event_type': template_get_event_type,
-    'DEBUG': DEBUG,
-    'EVENT_TYPES': EVENT_TYPES,
-    'VICTORY_TYPES': VICTORY_TYPES
 })
 
 @route('/')
 @security_headers
 @validate_request
-@csrf_protection
 @safe_template
 def game():
     """Show the main game page"""
@@ -514,7 +460,6 @@ def game():
 @route('/continue', method=['GET', 'POST'])
 @security_headers
 @validate_request
-@csrf_protection
 @safe_template
 def continue_game():
     """Handle continuing an existing game."""
@@ -527,7 +472,9 @@ def continue_game():
     # If no game state is found, redirect to start page
     if not state or 'player_name' not in state:
         session_logger.warning(f"No game state found for session {session_id}")
-        redirect('/')
+        response.status = 303
+        response.set_header('Location', '/')
+        return response
     
     # Check if game is over
     if state.get('game_over') or (state.get('stats', {}).get('health', 0) <= 0):
@@ -584,53 +531,48 @@ def continue_game():
     return template('views/game', **template_vars)
 
 @route('/abandon', method='POST')
+@security_headers
+@validate_request
 def abandon_quest():
-    """Abandon current quest and remove from leaderboard"""
-    try:
-        data = request.json
-        if not data or 'player_name' not in data:
-            response.status = 400
-            return {'error': 'Missing player name'}
-        
-        player_name = data['player_name']
-        session_id = data.get('session_id', get_session_id())
-        
-        # Remove from leaderboard
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        
-        c.execute('DELETE FROM leaderboard WHERE player_name = ?', (player_name,))
-        c.execute('DELETE FROM player_session_stats WHERE player_name = ? AND session_id = ?', 
-                 (player_name, session_id))
-        
-        conn.commit()
-        conn.close()
-        
-        # Clear game state
-        state = get_game_state()
-        if state:
-            state.clear()
-            save_game_state(state)
-        
-        response.status = 200
-        return {'status': 'success'}
-    except Exception as e:
-        logger.error(f"Error abandoning quest: {e}")
-        response.status = 500
-        return {'error': 'Internal server error'}
+    """Route to abandon the current quest"""
+    # Get player_name from form data
+    player_name = request.forms.get('player_name', '')
+    
+    if not player_name:
+        logger.warning("Abandon request missing player name")
+        response.status = 400
+        return "Player name required"
+    
+    # Get the game state for this session
+    state = get_game_state()
+    
+    # Check if we're abandoning the correct game
+    if not state or state.get('player_name') != player_name:
+        logger.warning(f"Abandon request with mismatched player name: {player_name}")
+        response.status = 400
+        return "Invalid player name"
+    
+    # Clear the game state
+    save_game_state({})
+    
+    # Log the action
+    logger.info(f"Quest abandoned by player: {player_name}")
+    
+    # Redirect to the home page
+    redirect('/')
 
 @route('/start', method=['GET', 'POST'])
 @security_headers
 @validate_request
-@csrf_protection
 @safe_template
 def start_game():
-    """Start or restart a game"""
+    """Route to start a new game"""
+    # Initialize session logger
     session_id = get_session_id()
     session_logger = get_session_logger('game', session_id)
     
     if request.method == 'POST':
-        # Get player name from form
+        # Get player name from form data
         player_name = request.forms.get('player_name', '').strip()
         username_choice = request.forms.get('username_choice')
         
@@ -640,12 +582,9 @@ def start_game():
         # Validate player name
         if not player_name or not template_validate_input(player_name):
             session_logger.warning(f"Invalid player name attempted: {player_name}")
-            template_vars = TEMPLATE_DEFAULTS.copy()
-            template_vars.update({
-                'message': "Invalid player name. Please use only letters, numbers, underscores, and hyphens (max 32 characters).",
-                'show_name_input': True
-            })
-            return template('views/game', **template_vars)
+            return template('game', 
+                           show_name_input=True,
+                           message="Invalid player name. Please use only letters, numbers, underscores, and hyphens (max 32 characters).")
         
         # Create new game state
         state = {
@@ -662,46 +601,30 @@ def start_game():
         verify_state = get_game_state()
         if not verify_state or verify_state.get('player_name') != player_name:
             session_logger.error(f"Failed to save game state for player {player_name}")
-            template_vars = TEMPLATE_DEFAULTS.copy()
-            template_vars.update({
-                'message': "An error occurred starting your game. Please try again.",
-                'show_name_input': True
-            })
-            return template('views/game', **template_vars)
+            return template('error', 
+                           error_code=500, 
+                           title="Game Error", 
+                           message="Failed to save your game. Please try again.")
         
-        # Update session stats
-        try:
-            update_player_session_stats(player_name, session_id, {
-                "games_played": 1,
-                "last_started": datetime.now().isoformat()
-            })
-            session_logger.info("Session stats updated successfully")
-        except Exception as e:
-            session_logger.error(f"Error updating session stats: {e}")
+        # Update last played time
+        update_player_last_played(player_name)
         
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        template_vars.update({
-            'message': f"Hail, {player_name}! Your journey into the unknown begins...\nWhat path will you choose?",
-            'show_choices': True,
-            'show_name_input': False,
-            'player_name': player_name,
-            'player_stats': DEFAULT_STATS.copy(),
-            'previous_stats': DEFAULT_STATS.copy(),
-            'event_type': EVENT_TYPES["JOURNEY_BEGIN"]
-        })
+        # Log new game started
+        session_logger.info(f"New game started for player {player_name}")
         
-        session_logger.info(f"Rendering template with vars: {json.dumps(template_vars)}")
-        return template('views/game', **template_vars)
-    else:
-        # Show the name input form
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        template_vars['show_name_input'] = True
-        return template('views/game', **template_vars)
+        # Use response.status and redirect with proper session cookie handling instead of bottle's redirect
+        response.status = 303
+        response.set_header('Location', '/continue')
+        return response
+    
+    # For GET requests, show the start game form
+    return template('game', 
+                   show_name_input=True,
+                   message="Welcome to Monsters and Treasure! Enter your name to begin your adventure.")
 
 @route('/victory/<victory_type>')
 @security_headers
 @validate_request
-@csrf_protection
 @safe_template
 def victory_page(victory_type):
     """Display victory page with appropriate type"""
@@ -760,7 +683,6 @@ def victory_page(victory_type):
 @route('/game_over')
 @security_headers
 @validate_request
-@csrf_protection
 @safe_template
 def game_over():
     """Display game over page"""
@@ -809,7 +731,6 @@ def game_over():
 @route('/choice', method='POST')
 @security_headers
 @validate_request
-@csrf_protection
 @safe_template
 def make_choice():
     """Process player choice and update game state"""
@@ -1192,7 +1113,6 @@ def get_region(region_key):
 @route('/api/achievements', method='POST')
 @security_headers
 @validate_request
-@csrf_protection
 def record_achievement():
     """Record a player achievement"""
     try:
@@ -1214,7 +1134,6 @@ def record_achievement():
 @route('/api/stats/session', method='POST')
 @security_headers
 @validate_request
-@csrf_protection
 def update_session():
     """Update session statistics"""
     try:

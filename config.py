@@ -121,7 +121,7 @@ PRODUCTION_CONFIG = {
         'max_request_size': 10 * 1024,  # 10KB
         'request_timeout': 5,  # seconds
         'session_lifetime': 24 * 60 * 60,  # 24 hours
-        'csrf_enabled': True,
+        'csrf_enabled': False,
         'secure_cookies': True,
         'strict_transport_security': True
     }
