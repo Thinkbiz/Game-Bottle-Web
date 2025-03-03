@@ -1,14 +1,20 @@
+# Use Python slim image with specific version for security
 FROM python:3.9-slim
+
+# Create non-root user
+RUN groupadd -r gameuser && useradd -r -g gameuser -s /bin/false gameuser
 
 # Set working directory
 WORKDIR /app
 
-# Install curl for healthcheck and other useful tools
+# Install security updates and required packages
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     dumb-init && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies first for better caching
@@ -16,8 +22,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir gunicorn
 
-# Create necessary directories
-RUN mkdir -p /app/data /app/logs /app/static
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/data /app/logs /app/static && \
+    chown -R gameuser:gameuser /app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -26,12 +33,14 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PYTHONIOENCODING=UTF-8
+    PYTHONIOENCODING=UTF-8 \
+    SESSION_COOKIE_SECURE=1 \
+    SESSION_COOKIE_HTTPONLY=1
 
 # Copy application code
-COPY . .
+COPY --chown=gameuser:gameuser . .
 
-# Make entry scripts executable and clean up Mac-specific files
+# Make entry scripts executable and clean up
 RUN chmod +x ./scripts/*.sh && \
     # Remove all Mac-specific files and metadata
     find . -name ".DS_Store" -type f -delete && \
@@ -39,20 +48,36 @@ RUN chmod +x ./scripts/*.sh && \
     find . -name ".AppleDouble" -type d -exec rm -rf {} \; 2>/dev/null || true && \
     find . -name "__MACOSX" -type d -exec rm -rf {} \; 2>/dev/null || true && \
     find . -name ".localized" -type f -delete && \
-    # Ensure proper permissions for all files
+    # Set proper permissions
     find /app -type d -exec chmod 755 {} \; && \
     find /app -type f -exec chmod 644 {} \; && \
     chmod +x /app/scripts/*.sh
 
+# Switch to non-root user
+USER gameuser
+
 # Expose port
 EXPOSE 8000
 
-# Health check
+# Health check with reduced privileges
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=5s \
   CMD curl -f http://localhost:8000/health || exit 1
 
-# Use dumb-init as PID 1 to handle signals properly
+# Use dumb-init as PID 1
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-# Run with Gunicorn for production with optimized settings
-CMD ["gunicorn", "--config", "gunicorn.conf.py", "--bind", "0.0.0.0:8000", "web_game:app"] 
+# Run with Gunicorn for production with security optimizations
+CMD ["gunicorn", \
+     "--config", "gunicorn.conf.py", \
+     "--bind", "0.0.0.0:8000", \
+     "--worker-class", "sync", \
+     "--workers", "4", \
+     "--timeout", "30", \
+     "--keep-alive", "2", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "50", \
+     "--limit-request-line", "4096", \
+     "--limit-request-fields", "100", \
+     "--limit-request-field_size", "8190", \
+     "--forwarded-allow-ips", "*", \
+     "web_game:app"] 

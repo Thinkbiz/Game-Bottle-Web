@@ -58,6 +58,7 @@
             return newId;
         }
 
+        // Enhanced security for session ID generation
         function generateUniqueSessionId() {
             try {
                 // Generate cryptographically secure random values
@@ -426,6 +427,103 @@
             margin-left: auto;
             margin-right: auto;
         }
+
+        /* Welcome Back Panel Styles */
+        .welcome-back-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .welcome-back-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1rem;
+            display: block;
+        }
+
+        .last-played {
+            color: #666;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+
+        .previous-achievements {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        /* Game State Options Styles */
+        .game-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-width: 400px;
+            margin: 2rem auto;
+        }
+
+        .game-option {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .game-option:hover {
+            border-color: #1e40af;
+            transform: translateY(-2px);
+        }
+
+        .game-option.continue {
+            border-color: #1e40af;
+            background: #1e40af;
+            color: white;
+        }
+
+        .game-option.new-journey {
+            border-color: #047857;
+        }
+
+        .game-option.abandon {
+            border-color: #dc2626;
+        }
+
+        .option-icon {
+            font-size: 1.5rem;
+        }
+
+        .option-details {
+            flex: 1;
+        }
+
+        .option-title {
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .option-description {
+            font-size: 0.8rem;
+            color: #666;
+            margin: 0.25rem 0 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -481,6 +579,82 @@
         </header>
         
         <main class="game-content">
+            % if get('returning_player'):
+            <div class="welcome-back-panel">
+                <img src="/static/images/welcome_back.png" alt="Welcome Back" class="welcome-back-icon">
+                <h2>Welcome Back, {{player_name}}!</h2>
+                <p class="last-played">Last played: {{last_played_time}}</p>
+                <div class="previous-achievements">
+                    <div>🏆 Best Score: {{best_score}}</div>
+                    <div>⚔️ Battles: {{total_battles}}</div>
+                    <div>💎 Treasures: {{treasures_found}}</div>
+                </div>
+            </div>
+
+            <div class="game-options">
+                <button class="game-option continue" onclick="continueGame()">
+                    <span class="option-icon">⚔️</span>
+                    <div class="option-details">
+                        <h3 class="option-title">Continue Adventure</h3>
+                        <p class="option-description">Current Progress: XP {{player_stats['xp']}}, Score {{player_stats['score']}}</p>
+                    </div>
+                </button>
+
+                <button class="game-option new-journey" onclick="showNewJourneyOptions()">
+                    <span class="option-icon">🔄</span>
+                    <div class="option-details">
+                        <h3 class="option-title">Start New Journey</h3>
+                        <p class="option-description">Begin a fresh adventure</p>
+                    </div>
+                </button>
+
+                <button class="game-option abandon" onclick="confirmAbandon()">
+                    <span class="option-icon">❌</span>
+                    <div class="option-details">
+                        <h3 class="option-title">Abandon Quest</h3>
+                        <p class="option-description">Clear progress & leaderboard entry</p>
+                    </div>
+                </button>
+            </div>
+
+            <!-- New Journey Modal -->
+            <div id="newJourneyModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <h3>Start New Journey</h3>
+                    <form id="newJourneyForm" action="/start" method="POST">
+                        <div class="form-group">
+                            <label>
+                                <input type="radio" name="username_choice" value="keep" checked>
+                                Keep current username ({{player_name}})
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="radio" name="username_choice" value="new">
+                                Choose new username
+                            </label>
+                            <input type="text" name="new_username" placeholder="Enter new username" disabled>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Start New Journey</button>
+                            <button type="button" class="btn-secondary" onclick="closeModal('newJourneyModal')">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Abandon Confirmation Modal -->
+            <div id="abandonModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <h3>Abandon Quest?</h3>
+                    <p>This will permanently remove your progress and leaderboard entry. This action cannot be undone.</p>
+                    <div class="modal-actions">
+                        <button onclick="abandonQuest()" class="btn-danger">Yes, Abandon Quest</button>
+                        <button onclick="closeModal('abandonModal')" class="btn-secondary">No, Keep Playing</button>
+                    </div>
+                </div>
+            </div>
+            % else:
             % if get('event_type'):
             <div class="game-image-container">
                 % if event_type == 'monster':
@@ -537,14 +711,16 @@
 
             <div class="game-options">
                 % if show_name_input:
-                <form action="/start" method="post" class="space-y-4">
+                <form id="playerForm" method="POST" action="/play" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ get_cookie('csrf_token', '') }}">
                     <input type="text" name="player_name" placeholder="Enter your name" required class="input w-full">
                     <button type="submit" class="btn-primary w-full">Start Adventure</button>
                 </form>
                 % end
                 
                 % if show_restart:
-                <form action="/start" method="post">
+                <form id="continueForm" method="POST" action="/continue" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ get_cookie('csrf_token', '') }}">
                     <input type="hidden" name="player_name" value="{{player_name}}">
                     <button type="submit" class="btn-primary w-full">Restart Adventure</button>
                 </form>
@@ -572,6 +748,7 @@
                 </form>
                 % end
             </div>
+            % end
         </main>
 
         <footer class="mt-8 text-center">
@@ -717,6 +894,98 @@
                          Math.min(100, value);
             bar.style.width = width + '%';
         });
+
+        function continueGame() {
+            window.location.href = '/continue';
+        }
+
+        function showNewJourneyOptions() {
+            document.getElementById('newJourneyModal').style.display = 'block';
+        }
+
+        function confirmAbandon() {
+            document.getElementById('abandonModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function abandonQuest() {
+            fetch('/abandon', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    player_name: '{{player_name}}',
+                    session_id: getOrCreateSessionId()
+                })
+            }).then(response => {
+                if (response.ok) {
+                    window.location.href = '/';
+                }
+            });
+        }
+
+        // Enable/disable new username input based on radio selection
+        document.querySelectorAll('input[name="username_choice"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const newUsernameInput = document.querySelector('input[name="new_username"]');
+                newUsernameInput.disabled = this.value === 'keep';
+                if (this.value === 'new') {
+                    newUsernameInput.focus();
+                }
+            });
+        });
+
+        // Make functions globally available
+        window.continueGame = continueGame;
+        window.showNewJourneyOptions = showNewJourneyOptions;
+        window.confirmAbandon = confirmAbandon;
+        window.closeModal = closeModal;
+        window.abandonQuest = abandonQuest;
+
+        // Input validation
+        function validatePlayerName(name) {
+            return /^[a-zA-Z0-9_-]{1,32}$/.test(name);
+        }
+
+        document.getElementById('playerForm')?.addEventListener('submit', function(e) {
+            const playerName = document.getElementById('player_name')?.value;
+            if (!validatePlayerName(playerName)) {
+                e.preventDefault();
+                alert('Invalid player name. Use only letters, numbers, underscores, and hyphens (max 32 characters).');
+            }
+        });
+
+        // Prevent double form submission
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                if (this.hasAttribute('data-submitted')) {
+                    e.preventDefault();
+                    return;
+                }
+                this.setAttribute('data-submitted', 'true');
+                setTimeout(() => this.removeAttribute('data-submitted'), 5000);
+            });
+        });
+
+        // Sanitize content before display
+        function sanitizeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Update message display with sanitization
+        function updateMessage(message) {
+            const messageElement = document.getElementById('message');
+            if (messageElement) {
+                messageElement.innerHTML = sanitizeHTML(message);
+            }
+        }
     });
     </script>
 </body>

@@ -19,6 +19,9 @@ import sqlite3
 from logger import get_logger, get_session_logger, game_logger as logger, game_state_logger
 import time
 import threading
+import secrets
+import re
+from functools import wraps
 
 # Game Constants
 GAME_THRESHOLDS = {
@@ -302,7 +305,110 @@ def log_to_logger(fn):
         return actual_response
     return _log_to_logger
 
+def generate_csrf_token() -> str:
+    """Generate a new CSRF token"""
+    return secrets.token_urlsafe(32)
+
+def validate_csrf_token(token: str) -> bool:
+    """Validate the CSRF token"""
+    expected_token = request.get_cookie('csrf_token')
+    return token and expected_token and secrets.compare_digest(token, expected_token)
+
+def csrf_protection(route_func):
+    """CSRF protection middleware"""
+    @wraps(route_func)
+    def wrapper(*args, **kwargs):
+        if request.method in ('POST', 'PUT', 'DELETE'):
+            token = request.forms.get('csrf_token')
+            if not validate_csrf_token(token):
+                logger.warning(f"CSRF validation failed for {request.path}")
+                response.status = 403
+                return {'error': 'Invalid CSRF token'}
+        
+        # Generate new token for GET requests or after successful validation
+        token = generate_csrf_token()
+        response.set_cookie(
+            'csrf_token',
+            token,
+            httponly=True,
+            secure=SESSION_COOKIE_SECURE,
+            path='/'
+        )
+        
+        return route_func(*args, **kwargs)
+    return wrapper
+
+def validate_request(route_func):
+    """Request validation middleware"""
+    @wraps(route_func)
+    def wrapper(*args, **kwargs):
+        # Check request size
+        content_length = request.get_header('Content-Length')
+        if content_length and int(content_length) > 10 * 1024:  # 10KB limit
+            logger.warning(f"Request too large: {content_length} bytes")
+            response.status = 413
+            return {'error': 'Request too large'}
+        
+        # Validate content type for POST/PUT requests
+        if request.method in ('POST', 'PUT'):
+            content_type = request.get_header('Content-Type', '')
+            if not content_type.startswith(('application/x-www-form-urlencoded', 'multipart/form-data')):
+                logger.warning(f"Invalid content type: {content_type}")
+                response.status = 415
+                return {'error': 'Invalid content type'}
+        
+        # Validate player name input
+        player_name = request.forms.get('player_name', '')
+        if player_name and not re.match(r'^[a-zA-Z0-9_-]{1,32}$', player_name):
+            logger.warning(f"Invalid player name: {player_name}")
+            response.status = 400
+            return {'error': 'Invalid player name format'}
+        
+        # Rate limiting (simple in-memory implementation)
+        client_ip = request.remote_addr
+        current_time = datetime.now()
+        if hasattr(request.app, 'rate_limit_data'):
+            rate_data = request.app.rate_limit_data
+            if client_ip in rate_data:
+                last_request, count = rate_data[client_ip]
+                if (current_time - last_request).seconds < 1:  # 1 second window
+                    if count >= 10:  # Max 10 requests per second
+                        logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+                        response.status = 429
+                        return {'error': 'Too many requests'}
+                    rate_data[client_ip] = (last_request, count + 1)
+                else:
+                    rate_data[client_ip] = (current_time, 1)
+            else:
+                rate_data[client_ip] = (current_time, 1)
+        else:
+            request.app.rate_limit_data = {client_ip: (current_time, 1)}
+        
+        return route_func(*args, **kwargs)
+    return wrapper
+
+# Apply security headers
+def security_headers(route_func):
+    """Add security headers to response"""
+    @wraps(route_func)
+    def wrapper(*args, **kwargs):
+        response.headers.update({
+            'X-Frame-Options': 'SAMEORIGIN',
+            'X-Content-Type-Options': 'nosniff',
+            'X-XSS-Protection': '1; mode=block',
+            'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.google-analytics.com",
+            'Referrer-Policy': 'strict-origin-when-cross-origin',
+            'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+        })
+        if SESSION_COOKIE_SECURE:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        return route_func(*args, **kwargs)
+    return wrapper
+
 @route('/')
+@security_headers
+@validate_request
+@csrf_protection
 @safe_template
 def game():
     """Show the main game page"""
@@ -323,13 +429,27 @@ def game():
     player_name = state.get('player_name', 'Adventurer')
     stats = state.get('stats', DEFAULT_STATS.copy())
     
+    # Get player session stats for returning player experience
+    try:
+        session_stats = get_player_session_stats(player_name, session_id)
+        template_vars.update({
+            'returning_player': True,
+            'last_played_time': session_stats.get('last_updated', 'Unknown'),
+            'best_score': session_stats.get('best_score', 0),
+            'total_battles': session_stats.get('combat_encounters', 0),
+            'treasures_found': session_stats.get('treasures_found', 0)
+        })
+    except Exception as e:
+        session_logger.error(f"Error getting session stats: {e}")
+        template_vars['returning_player'] = False
+    
     session_logger.debug(f"Showing game for player {player_name} with stats: {stats}")
     
     # Set up template variables
     template_vars.update({
-        'message': f"Hail, {player_name}! Your journey into the unknown continues...\nWhat path will you choose?",
+        'message': f"Welcome back, {player_name}! Your journey into the unknown continues...\nWhat path will you choose?",
         'show_choices': True,
-        'show_name_input': False,  # Explicitly set to False to hide the name input
+        'show_name_input': False,
         'player_name': player_name,
         'player_stats': stats,
         'previous_stats': state.get('previous_stats', stats.copy()),
@@ -337,6 +457,192 @@ def game():
     })
     
     return template('views/game', **template_vars)
+
+@route('/continue', method=['GET', 'POST'])
+@security_headers
+@validate_request
+@csrf_protection
+@safe_template
+def continue_game():
+    """Handle continuing an existing game."""
+    session_id = get_session_id()
+    session_logger = get_session_logger('game', session_id)
+    
+    # Get current game state
+    state = get_game_state()
+    
+    # If no game state is found, redirect to start page
+    if not state or 'player_name' not in state:
+        session_logger.warning(f"No game state found for session {session_id}")
+        redirect('/')
+    
+    # Check if game is over
+    if state.get('game_over') or (state.get('stats', {}).get('health', 0) <= 0):
+        session_logger.info(f"Attempted to continue a game over state for session {session_id}")
+        template_vars = TEMPLATE_DEFAULTS.copy()
+        template_vars.update({
+            'message': f"Alas, brave {state.get('player_name', 'Adventurer')}, your previous journey has reached its end!\nWith a score of {state.get('stats', {}).get('score', 0)} and {state.get('stats', {}).get('xp', 0)} XP, your tale is now part of the tavern's legends.\n\nClick 'Start New Adventure' to write a new chapter in your saga!",
+            'show_restart': True,
+            'show_name_input': False,
+            'player_name': state.get('player_name', 'Adventurer'),
+            'player_stats': state.get('stats', DEFAULT_STATS.copy()),
+            'previous_stats': state.get('previous_stats', DEFAULT_STATS.copy()),
+            'event_type': EVENT_TYPES["GAMEOVER"]
+        })
+        return template('views/game', **template_vars)
+    
+    # Update last played time
+    try:
+        update_player_last_played(state['player_name'])
+        session_logger.info(f"Updated last played time for player {state['player_name']}")
+    except Exception as e:
+        session_logger.error(f"Error updating last played time: {e}")
+    
+    # Set up template variables for the game page
+    template_vars = TEMPLATE_DEFAULTS.copy()
+    player_name = state.get('player_name', 'Adventurer')
+    stats = state.get('stats', DEFAULT_STATS.copy())
+    
+    # Get player session stats for returning player experience
+    try:
+        session_stats = get_player_session_stats(player_name, session_id)
+        template_vars.update({
+            'returning_player': True,
+            'last_played_time': session_stats.get('last_updated', 'Unknown'),
+            'best_score': session_stats.get('best_score', 0),
+            'total_battles': session_stats.get('combat_encounters', 0),
+            'treasures_found': session_stats.get('treasures_found', 0)
+        })
+    except Exception as e:
+        session_logger.error(f"Error getting session stats: {e}")
+        template_vars['returning_player'] = False
+    
+    # Set up template variables
+    template_vars.update({
+        'message': f"Welcome back, {player_name}! Your journey into the unknown continues...\nWhat path will you choose?",
+        'show_choices': True,
+        'show_name_input': False,
+        'player_name': player_name,
+        'player_stats': stats,
+        'previous_stats': state.get('previous_stats', stats.copy()),
+        'event_type': EVENT_TYPES["JOURNEY_CONTINUE"]
+    })
+    
+    return template('views/game', **template_vars)
+
+@route('/abandon', method='POST')
+def abandon_quest():
+    """Abandon current quest and remove from leaderboard"""
+    try:
+        data = request.json
+        if not data or 'player_name' not in data:
+            response.status = 400
+            return {'error': 'Missing player name'}
+        
+        player_name = data['player_name']
+        session_id = data.get('session_id', get_session_id())
+        
+        # Remove from leaderboard
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        c.execute('DELETE FROM leaderboard WHERE player_name = ?', (player_name,))
+        c.execute('DELETE FROM player_session_stats WHERE player_name = ? AND session_id = ?', 
+                 (player_name, session_id))
+        
+        conn.commit()
+        conn.close()
+        
+        # Clear game state
+        state = get_game_state()
+        if state:
+            state.clear()
+            save_game_state(state)
+        
+        response.status = 200
+        return {'status': 'success'}
+    except Exception as e:
+        logger.error(f"Error abandoning quest: {e}")
+        response.status = 500
+        return {'error': 'Internal server error'}
+
+# Modify the start_game route to handle username choice
+@route('/start', method=['GET', 'POST'])
+def start_game():
+    """Start or restart a game"""
+    session_id = get_session_id()
+    session_logger = get_session_logger('game', session_id)
+    
+    if request.method == 'POST':
+        # Log all form data
+        session_logger.info(f"Form data: {dict(request.forms)}")
+        
+        username_choice = request.forms.get('username_choice')
+        current_state = get_game_state()
+        
+        session_logger.info(f"POST request to start_game. Username choice: {username_choice}")
+        session_logger.info(f"Current state: {json.dumps(current_state)}")
+        
+        if username_choice == 'keep' and current_state and 'player_name' in current_state:
+            player_name = current_state['player_name']
+        else:
+            player_name = request.forms.get('new_username', request.forms.get('player_name', '')).strip()
+        
+        session_logger.info(f"Player name after processing: {player_name}")
+        
+        if not player_name:
+            session_logger.warning("No player name provided")
+            template_vars = TEMPLATE_DEFAULTS.copy()
+            template_vars['show_name_input'] = True
+            template_vars['error_message'] = "Please enter a valid username"
+            return template('views/game', **template_vars)
+        
+        session_logger.info(f"Starting new game for player: {player_name}")
+        
+        # Clear previous game state and start fresh
+        state = {
+            'player_name': player_name,
+            'stats': DEFAULT_STATS.copy(),
+            'previous_stats': DEFAULT_STATS.copy(),
+            'events': []
+        }
+        
+        # Save the new game state
+        save_success = save_game_state(state)
+        session_logger.info(f"Game state save result: {save_success}")
+        
+        # Verify the save by reading it back
+        verify_state = get_game_state()
+        session_logger.info(f"Verified state after save: {json.dumps(verify_state)}")
+        
+        # Update session stats
+        try:
+            update_player_session_stats(player_name, session_id, {
+                "games_played": 1,
+                "last_started": datetime.now().isoformat()
+            })
+            session_logger.info("Session stats updated successfully")
+        except Exception as e:
+            session_logger.error(f"Error updating session stats: {e}")
+        
+        template_vars = TEMPLATE_DEFAULTS.copy()
+        template_vars.update({
+            'message': f"Hail, {player_name}! Your journey into the unknown begins...\nWhat path will you choose?",
+            'show_choices': True,
+            'show_name_input': False,
+            'player_name': player_name,
+            'player_stats': DEFAULT_STATS.copy(),
+            'previous_stats': DEFAULT_STATS.copy(),
+            'event_type': EVENT_TYPES["JOURNEY_BEGIN"]
+        })
+        
+        session_logger.info(f"Rendering template with vars: {json.dumps(template_vars)}")
+        return template('views/game', **template_vars)
+    else:
+        # Show the name input form
+        template_vars = TEMPLATE_DEFAULTS.copy()
+        template_vars['show_name_input'] = True
+        return template('views/game', **template_vars)
 
 @route('/victory/<victory_type>')
 def victory_page(victory_type):
@@ -437,53 +743,6 @@ def game_over():
     save_game_state(state)
     
     return template('views/game', **template_vars)
-
-@route('/start', method=['GET', 'POST'])
-def start_game():
-    """Start or restart a game"""
-    session_id = get_session_id()
-    session_logger = get_session_logger('game', session_id)
-    
-    if request.method == 'POST':
-        player_name = request.forms.get('player_name', '').strip()
-        session_logger.info(f"Starting new game for player: {player_name}")
-        
-        # Clear previous game state and start fresh
-        state = {
-            'player_name': player_name,
-            'stats': DEFAULT_STATS.copy(),
-            'previous_stats': DEFAULT_STATS.copy(),
-            'events': []
-        }
-        
-        # Save the new game state
-        save_game_state(state)
-        
-        # Update session stats
-        try:
-            update_player_session_stats(player_name, session_id, {"games_played": 1})
-        except Exception as e:
-            session_logger.error(f"Error updating session stats: {e}")
-        
-        # Create template vars dictionary
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        template_vars.update({
-            'message': f"Hail, {player_name}! Your journey into the unknown begins...\nWhat path will you choose?",
-            'show_choices': True,
-            'show_name_input': False,  # Explicitly set to False to hide the name input
-            'player_name': player_name,
-            'player_stats': DEFAULT_STATS.copy(),
-            'previous_stats': DEFAULT_STATS.copy(),
-            'event_type': EVENT_TYPES["JOURNEY_BEGIN"]
-        })
-        
-        # Redirect directly to the game page with choices
-        return template('views/game', **template_vars)
-    else:
-        # Show the name input form
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        template_vars['show_name_input'] = True
-        return template('views/game', **template_vars)
 
 @route('/choice', method='POST')
 def make_choice():
@@ -674,7 +933,7 @@ def make_choice():
             # Mark that victory has been achieved but don't clear the state
             state['victory_achieved'] = True
             save_game_state(state)
-            return template('game', **template_vars)
+            return template('views/game', **template_vars)
         # If victory was already achieved, just continue normally
         elif victory_type and state.get('victory_achieved'):
             # Just continue with the normal game flow
@@ -704,7 +963,7 @@ def make_choice():
             state['game_over'] = True
             save_game_state(state)
         
-        return template('game', **template_vars)
+        return template('views/game', **template_vars)
 
     except Exception as e:
         logger.error(f"Error processing choice: {str(e)}")
@@ -714,14 +973,22 @@ def make_choice():
             'show_name_input': True
         })
     
-    return template('game', **template_vars)
+    return template('views/game', **template_vars)
 
 @route('/static/<filename:path>')
+@security_headers
 def serve_static(filename):
     # Basic security: ensure filename doesn't contain path traversal
     if '..' in filename or filename.startswith('/'):
+        logger.warning(f"Attempted path traversal: {filename}")
         return 'Access denied', 403
         
+    # Validate file extension
+    allowed_extensions = {'.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2'}
+    if not any(filename.lower().endswith(ext) for ext in allowed_extensions):
+        logger.warning(f"Invalid file extension requested: {filename}")
+        return 'Access denied', 403
+    
     # Try the ./static directory first
     response = static_file(filename, root='./static')
     if response.status_code == 404:
@@ -809,7 +1076,7 @@ def debug_die():
     game_state['game_over'] = True
     save_game_state(game_state)
     
-    return template('game', **template_vars)
+    return template('views/game', **template_vars)
 
 @route('/api/stats/regional', method='POST')
 def update_region():
@@ -909,6 +1176,19 @@ def get_session(player_name, session_id):
         logger.error(f"Error getting session stats: {str(e)}")
         response.status = 500
         return {'error': 'Internal server error'}
+
+def update_player_last_played(player_name):
+    """Update the last played timestamp for a player."""
+    try:
+        with sqlite3.connect('data/game.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE players SET last_played = ? WHERE name = ?',
+                (datetime.now().isoformat(), player_name)
+            )
+            conn.commit()
+    except Exception as e:
+        logger.error(f"Error updating last played time for {player_name}: {e}")
 
 # Initialize app with middleware
 app = default_app()
