@@ -568,7 +568,7 @@
         <main class="game-content">
             % if get('returning_player'):
             <div class="welcome-back-panel">
-                <img src="/static/images/welcome_back.png" alt="Welcome Back" class="welcome-back-icon">
+                <img src="/static/images/states/welcome_back.png" alt="Welcome Back" class="welcome-back-icon">
                 <h2>Welcome Back, {{player_name}}!</h2>
                 <p class="last-played">Last played: {{last_played_time}}</p>
                 <div class="previous-achievements">
@@ -666,6 +666,8 @@
                 <img src="/static/images/states/rest_failed.png" alt="Rest Failed" class="game-image">
                 % elif event_type == 'welcome':
                 <img src="/static/images/states/welcome.png" alt="Welcome" class="game-image">
+                % elif event_type == 'welcome_back':
+                <img src="/static/images/states/welcome_back.png" alt="Welcome Back" class="game-image">
                 % elif event_type == 'journey_begin':
                 <img src="/static/images/states/journey_begin.png" alt="Journey Begins" class="game-image">
                 % elif event_type == 'adventure_start':

@@ -52,7 +52,8 @@ EVENT_TYPES = {
     "VICTORY_STANDARD": "victory_standard",
     "REST_FAILED": "rest_failed",
     "LOCAL_UNAVAILABLE": "local_unavailable",
-    "JOURNEY_CONTINUE": "journey_continue"
+    "JOURNEY_CONTINUE": "journey_continue",
+    "WELCOME_BACK": "welcome_back"
 }
 
 # Event type mapping for victories
@@ -438,9 +439,12 @@ def game():
             'total_battles': session_stats.get('combat_encounters', 0),
             'treasures_found': session_stats.get('treasures_found', 0)
         })
+        # Use the welcome_back event type for returning players
+        template_vars['event_type'] = EVENT_TYPES["WELCOME_BACK"]
     except Exception as e:
         session_logger.error(f"Error getting session stats: {e}")
         template_vars['returning_player'] = False
+        template_vars['event_type'] = EVENT_TYPES["JOURNEY_CONTINUE"]
     
     session_logger.debug(f"Showing game for player {player_name} with stats: {stats}")
     
@@ -452,7 +456,7 @@ def game():
         'player_name': player_name,
         'player_stats': stats,
         'previous_stats': state.get('previous_stats', stats.copy()),
-        'event_type': EVENT_TYPES["JOURNEY_CONTINUE"]
+        'victory_type': determine_victory_type(stats)
     })
     
     return template('views/game', **template_vars)
@@ -513,9 +517,12 @@ def continue_game():
             'total_battles': session_stats.get('combat_encounters', 0),
             'treasures_found': session_stats.get('treasures_found', 0)
         })
+        # Use the welcome_back event type for returning players
+        template_vars['event_type'] = EVENT_TYPES["WELCOME_BACK"]
     except Exception as e:
         session_logger.error(f"Error getting session stats: {e}")
         template_vars['returning_player'] = False
+        template_vars['event_type'] = EVENT_TYPES["JOURNEY_CONTINUE"]
     
     # Set up template variables
     template_vars.update({
@@ -525,7 +532,7 @@ def continue_game():
         'player_name': player_name,
         'player_stats': stats,
         'previous_stats': state.get('previous_stats', stats.copy()),
-        'event_type': EVENT_TYPES["JOURNEY_CONTINUE"]
+        'victory_type': determine_victory_type(stats)
     })
     
     return template('views/game', **template_vars)
@@ -1178,10 +1185,25 @@ def update_player_last_played(player_name):
     try:
         with sqlite3.connect('data/game.db') as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                'UPDATE players SET last_played = ? WHERE name = ?',
-                (datetime.now().isoformat(), player_name)
-            )
+            
+            # First check if the player exists
+            cursor.execute('SELECT name FROM players WHERE name = ?', (player_name,))
+            player_exists = cursor.fetchone()
+            
+            if player_exists:
+                # Update existing player's last_played time
+                cursor.execute(
+                    'UPDATE players SET last_played = ? WHERE name = ?',
+                    (datetime.now().isoformat(), player_name)
+                )
+            else:
+                # Create a new player record
+                cursor.execute(
+                    'INSERT INTO players (name, last_played, created_at) VALUES (?, ?, ?)',
+                    (player_name, datetime.now().isoformat(), datetime.now().isoformat())
+                )
+                logger.info(f"Created new player record for {player_name}")
+            
             conn.commit()
     except Exception as e:
         logger.error(f"Error updating last played time for {player_name}: {e}")

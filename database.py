@@ -7,10 +7,10 @@ import secrets
 import hashlib
 import json
 
-# Ensure data directory exists
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+from config import DB_PATH, DATA_DIR
+
+# Create data directory if it doesn't exist
 os.makedirs(DATA_DIR, exist_ok=True)
-DB_PATH = os.path.join(DATA_DIR, 'game.db')
 
 @dataclass
 class LeaderboardEntry:
@@ -123,6 +123,19 @@ def add_to_leaderboard(player_name: str, score: int, xp: int, victory_type: str,
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
+        
+        # Ensure player exists in players table first
+        c.execute('SELECT name FROM players WHERE name = ?', (player_name,))
+        player_exists = c.fetchone()
+        
+        if not player_exists:
+            # Create player if they don't exist
+            c.execute(
+                'INSERT INTO players (name, last_played, created_at) VALUES (?, ?, ?)',
+                (player_name, datetime.now().isoformat(), datetime.now().isoformat())
+            )
+            print(f"Created new player record for {player_name} in add_to_leaderboard")
+            
         c.execute('''
             INSERT INTO leaderboard (player_name, score, xp, victory_type, health)
             VALUES (?, ?, ?, ?, ?)
@@ -299,6 +312,18 @@ def update_player_achievement(player_name: str, achievement: str):
     c = conn.cursor()
     
     try:
+        # Ensure player exists in players table first
+        c.execute('SELECT name FROM players WHERE name = ?', (player_name,))
+        player_exists = c.fetchone()
+        
+        if not player_exists:
+            # Create player if they don't exist
+            c.execute(
+                'INSERT INTO players (name, last_played, created_at) VALUES (?, ?, ?)',
+                (player_name, datetime.now().isoformat(), datetime.now().isoformat())
+            )
+            print(f"Created new player record for {player_name} in update_player_achievement")
+            
         c.execute('''
             INSERT OR IGNORE INTO player_achievements (player_name, achievement)
             VALUES (?, ?)
@@ -323,7 +348,19 @@ def update_player_session_stats(player_name: str, session_id: str, stats_update:
         elif not isinstance(stats_update, dict):
             print(f"Warning: Non-dict passed to update_player_session_stats: {type(stats_update)}")
             return
-            
+        
+        # Ensure player exists in players table first
+        c.execute('SELECT name FROM players WHERE name = ?', (player_name,))
+        player_exists = c.fetchone()
+        
+        if not player_exists:
+            # Create player if they don't exist
+            c.execute(
+                'INSERT INTO players (name, last_played, created_at) VALUES (?, ?, ?)',
+                (player_name, datetime.now().isoformat(), datetime.now().isoformat())
+            )
+            print(f"Created new player record for {player_name} in update_player_session_stats")
+        
         # First, try to insert a new session if it doesn't exist
         c.execute('''
             INSERT OR IGNORE INTO player_session_stats (player_name, session_id)
@@ -424,6 +461,18 @@ def save_game_state_to_db(session_id: str, player_name: str, state: Dict[str, An
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
+        
+        # Ensure player exists in players table first
+        c.execute('SELECT name FROM players WHERE name = ?', (player_name,))
+        player_exists = c.fetchone()
+        
+        if not player_exists:
+            # Create player if they don't exist
+            c.execute(
+                'INSERT INTO players (name, last_played, created_at) VALUES (?, ?, ?)',
+                (player_name, datetime.now().isoformat(), datetime.now().isoformat())
+            )
+            print(f"Created new player record for {player_name} in save_game_state_to_db")
         
         # Convert state to JSON
         state_json = json.dumps(state)
