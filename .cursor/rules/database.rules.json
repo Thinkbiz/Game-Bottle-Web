@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "schema_validation",
+      "description": "Ensure database schema changes are properly managed",
+      "pattern": "init_db()",
+      "antiPattern": "ALTER TABLE|CREATE TABLE(?! IF NOT EXISTS)",
+      "severity": "error"
+    },
+    {
+      "name": "column_existence_check",
+      "description": "Check for column existence before operations",
+      "pattern": "SELECT EXISTS(SELECT 1 FROM pragma_table_info(?table) WHERE name=?column)",
+      "antiPattern": "no such column",
+      "severity": "error"
+    },
+    {
+      "name": "transaction_handling",
+      "description": "Use transactions for data consistency",
+      "pattern": "BEGIN TRANSACTION|COMMIT|ROLLBACK",
+      "antiPattern": "(?<!BEGIN TRANSACTION)\\s+INSERT|UPDATE|DELETE",
+      "severity": "warning"
+    },
+    {
+      "name": "parameterized_queries",
+      "description": "Use parameterized queries to prevent SQL injection",
+      "pattern": "\\?|:param",
+      "antiPattern": "f\".*SELECT|INSERT|UPDATE|DELETE.*{",
+      "severity": "error"
+    },
+    {
+      "name": "schema_documentation",
+      "description": "Document database schema changes",
+      "pattern": "-- Migration:|-- Version:",
+      "antiPattern": "(?<!--)\\s+ALTER TABLE|CREATE TABLE",
+      "severity": "warning"
+    }
+  ]
+} 

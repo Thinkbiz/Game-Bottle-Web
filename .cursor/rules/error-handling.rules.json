@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "api_error_response",
+      "description": "Use consistent error response format",
+      "pattern": "Response: {'error': '[^']+'",
+      "antiPattern": "Response: (?!{'error'|{'status')",
+      "severity": "error"
+    },
+    {
+      "name": "error_boundary",
+      "description": "Use error boundary decorator for routes",
+      "pattern": "@error_boundary.*def [a-zA-Z_]+\\(",
+      "antiPattern": "def [a-zA-Z_]+\\((?!.*@error_boundary)",
+      "severity": "error"
+    },
+    {
+      "name": "template_validation",
+      "description": "Validate template variables",
+      "pattern": "@safe_template.*def [a-zA-Z_]+\\(",
+      "antiPattern": "def [a-zA-Z_]+\\((?!.*@safe_template)",
+      "severity": "error"
+    },
+    {
+      "name": "error_logging",
+      "description": "Log errors with context",
+      "pattern": "logger\\.error\\([^)]+, exc_info=True\\)",
+      "antiPattern": "logger\\.error\\([^)]+(?<!exc_info=True)\\)",
+      "severity": "warning"
+    },
+    {
+      "name": "user_friendly_errors",
+      "description": "Show user-friendly error messages",
+      "pattern": "message=\"[^\"]+\".*show_name_input=True",
+      "antiPattern": "message=\"[^\"]*(?:error|exception|traceback)",
+      "severity": "warning"
+    }
+  ]
+} 

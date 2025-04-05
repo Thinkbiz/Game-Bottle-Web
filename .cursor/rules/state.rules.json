@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "state_access",
+      "description": "Use state getter/setter functions",
+      "pattern": "(get|save)_game_state\\(",
+      "antiPattern": "game_states\\[",
+      "severity": "error"
+    },
+    {
+      "name": "state_logging",
+      "description": "Log state changes",
+      "pattern": "game_state_logger\\.debug\\(.*json\\.dumps\\(state",
+      "antiPattern": "game_states\\[session_id\\]\\s*=",
+      "severity": "warning"
+    },
+    {
+      "name": "session_management",
+      "description": "Use session management functions",
+      "pattern": "get_session_id\\(\\)",
+      "antiPattern": "request\\.cookies\\['session_id'\\]",
+      "severity": "error"
+    },
+    {
+      "name": "state_validation",
+      "description": "Validate state before updates",
+      "pattern": "validate_template_vars\\(.*\\)",
+      "antiPattern": "template_vars\\[.*\\]\\s*=",
+      "severity": "error"
+    },
+    {
+      "name": "previous_state",
+      "description": "Track previous state for comparisons",
+      "pattern": "'previous_stats':\\s*state\\['stats'\\]\\.copy\\(\\)",
+      "antiPattern": "state\\['stats'\\]\\s*=",
+      "severity": "warning"
+    }
+  ]
+} 

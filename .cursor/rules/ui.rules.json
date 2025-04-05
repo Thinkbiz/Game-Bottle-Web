@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "animation_timing",
+      "description": "Keep animations under 1000ms",
+      "pattern": "setTimeout\\([^,]+,\\s*(?:100|[1-9][0-9][0-9]?)\\)",
+      "antiPattern": "setTimeout\\([^,]+,\\s*(?:0|[1-9][0-9]{3,})\\)",
+      "severity": "warning"
+    },
+    {
+      "name": "class_based_animations",
+      "description": "Use CSS classes for animations",
+      "pattern": "classList\\.add\\('show|increase|decrease'\\)",
+      "antiPattern": "style\\.animation",
+      "severity": "warning"
+    },
+    {
+      "name": "animation_cleanup",
+      "description": "Remove animation classes after completion",
+      "pattern": "setTimeout\\([^)]*classList\\.remove",
+      "antiPattern": "classList\\.add\\([^)]*(?!.*setTimeout.*remove)",
+      "severity": "error"
+    },
+    {
+      "name": "progressive_enhancement",
+      "description": "Check image load state before animating",
+      "pattern": "img\\.complete.*setTimeout|img\\.onload\\s*=\\s*.*setTimeout",
+      "antiPattern": "setTimeout\\([^)]*classList\\.add\\('show'\\)(?!.*complete|.*onload)",
+      "severity": "warning"
+    },
+    {
+      "name": "mutation_observer",
+      "description": "Use MutationObserver for DOM updates",
+      "pattern": "new MutationObserver\\(.*observe\\(",
+      "antiPattern": "setInterval\\(.*update",
+      "severity": "warning"
+    }
+  ]
+} 

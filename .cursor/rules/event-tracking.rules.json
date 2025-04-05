@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "event_naming_convention",
+      "description": "Maintain consistent event naming",
+      "pattern": "trackGameEvent\\('(screen_view|combat_choice|treasure_choice|rest_choice|adventure_choice)'",
+      "antiPattern": "trackGameEvent\\('[^a-z_]'",
+      "severity": "error"
+    },
+    {
+      "name": "event_parameters",
+      "description": "Include required parameters in events",
+      "pattern": "trackGameEvent\\([^)]*health.*score.*xp",
+      "antiPattern": "trackGameEvent\\([^)]*(?<!health|score|xp)",
+      "severity": "warning"
+    },
+    {
+      "name": "event_initialization",
+      "description": "Initialize event tracking after DOM load",
+      "pattern": "DOMContentLoaded.*trackGameEvent",
+      "antiPattern": "trackGameEvent(?!.*DOMContentLoaded)",
+      "severity": "error"
+    },
+    {
+      "name": "event_context",
+      "description": "Include context with game events",
+      "pattern": "eventParams = {.*choice:.*health:.*score:.*xp:",
+      "antiPattern": "trackGameEvent\\([^{]*\\)",
+      "severity": "warning"
+    },
+    {
+      "name": "event_documentation",
+      "description": "Document event tracking calls",
+      "pattern": "// Track.*trackGameEvent",
+      "antiPattern": "^trackGameEvent(?!\\s*//)",
+      "severity": "info"
+    }
+  ]
+} 

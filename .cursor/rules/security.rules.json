@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "session_management",
+      "description": "Use secure session handling",
+      "pattern": "session_id = str\\(random\\.randint\\(\\d+,\\s*\\d+\\)\\)",
+      "antiPattern": "session_id = request\\.cookies\\.get\\('session_id'\\)",
+      "severity": "error"
+    },
+    {
+      "name": "input_validation",
+      "description": "Validate all user inputs",
+      "pattern": "validate_template_vars\\(|test_template_vars\\(",
+      "antiPattern": "template\\([^)]+\\)(?!.*validate)",
+      "severity": "error"
+    },
+    {
+      "name": "secure_headers",
+      "description": "Set secure response headers",
+      "pattern": "'X-Forwarded-Proto': 'https'.*'Content-Type':",
+      "antiPattern": "response\\.headers(?!.*X-Content-Type-Options)",
+      "severity": "warning"
+    },
+    {
+      "name": "cookie_security",
+      "description": "Set secure cookie attributes",
+      "pattern": "set_cookie\\('session_id',[^,]+,\\s*path='/'\\)",
+      "antiPattern": "set_cookie\\([^)]*(?<!secure=True)\\)",
+      "severity": "warning"
+    },
+    {
+      "name": "error_exposure",
+      "description": "Prevent exposure of internal errors",
+      "pattern": "message=\"An error occurred\"|{'error': '[^']+'",
+      "antiPattern": "message=str\\(e\\)",
+      "severity": "error"
+    }
+  ]
+} 

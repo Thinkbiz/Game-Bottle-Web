@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "efficient_dom_updates",
+      "description": "Use MutationObserver for DOM updates",
+      "pattern": "const observer = new MutationObserver\\([^)]+\\)",
+      "antiPattern": "setInterval\\([^)]+document\\.querySelector",
+      "severity": "error"
+    },
+    {
+      "name": "animation_performance",
+      "description": "Force reflow only when necessary",
+      "pattern": "void\\s+[a-zA-Z]+\\.offsetWidth",
+      "antiPattern": "\\.offsetWidth(?!.*void)",
+      "severity": "warning"
+    },
+    {
+      "name": "event_delegation",
+      "description": "Use event delegation for multiple elements",
+      "pattern": "document\\.addEventListener\\('DOMContentLoaded'",
+      "antiPattern": "\\.forEach\\([^)]+addEventListener",
+      "severity": "warning"
+    },
+    {
+      "name": "image_loading",
+      "description": "Check image load state before animating",
+      "pattern": "img\\.complete.*setTimeout|img\\.onload",
+      "antiPattern": "setTimeout\\([^)]*classList\\.add\\('show'\\)(?!.*complete)",
+      "severity": "warning"
+    },
+    {
+      "name": "class_manipulation",
+      "description": "Batch class changes",
+      "pattern": "classList\\.(add|remove)\\([^)]+\\)",
+      "antiPattern": "style\\.[a-zA-Z]+=",
+      "severity": "info"
+    }
+  ]
+} 

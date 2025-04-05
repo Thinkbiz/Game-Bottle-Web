@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "health_check_response",
+      "description": "Ensure health check endpoints return standard format",
+      "pattern": "Response: {'status': '(healthy|unhealthy)'",
+      "antiPattern": "Response: (?!{'status')",
+      "severity": "error"
+    },
+    {
+      "name": "request_logging",
+      "description": "Log all API requests with required fields",
+      "pattern": "Request: (GET|POST|PUT|DELETE).*Headers:.*Forms:.*Response:",
+      "antiPattern": "Request:(?!.*Headers:|.*Forms:|.*Response:)",
+      "severity": "warning"
+    },
+    {
+      "name": "debug_logging",
+      "description": "Use appropriate log levels",
+      "pattern": "(DEBUG|INFO|WARNING|ERROR) - [a-zA-Z_]+ - ",
+      "antiPattern": "print\\(",
+      "severity": "warning"
+    },
+    {
+      "name": "gunicorn_logging",
+      "description": "Monitor Gunicorn server state",
+      "pattern": "\\[INFO\\] (Starting|Shutting down|Worker|Handling signal)",
+      "antiPattern": "\\[ERROR\\].*Worker timeout",
+      "severity": "info"
+    },
+    {
+      "name": "performance_monitoring",
+      "description": "Include timestamps in logs",
+      "pattern": "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}",
+      "antiPattern": "(?<!\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3})",
+      "severity": "warning"
+    }
+  ]
+} 

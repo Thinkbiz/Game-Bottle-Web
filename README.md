@@ -1,83 +1,94 @@
 # Monsters and Treasure Game
 
-A web-based adventure game built with Python and Bottle, featuring Docker containerization for consistent development and deployment.
+A web-based adventure game built with Python and Bottle.
 
 Deployment test timestamp: 2024-02-15
 
-## Branch Structure
-
-- `main`: Production-ready code that has been tested and verified
-- `development`: Active development branch for ongoing work
-- `feature/*`: Feature-specific branches for new functionality
-
 ## Local Development
 
-### Standard Setup
-
 1. Clone the repository:
-```bash
-git clone <repository-url>
-cd Game-Bottle-Web
-```
 
-2. Set up a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
+# Game-Bottle-Web Production Branch
 
-3. Run the application:
-```bash
-python web_game.py
-```
+This is the production branch of the Game-Bottle-Web project. This branch contains the code and configurations that are deployed to the VPS.
 
-### Docker Development
+## Branch Structure
 
-1. Build and start the Docker container:
-```bash
-docker-compose up -d
-```
+- `main`: Development branch, contains the latest features and changes
+- `production`: Production branch, contains the stable code deployed to VPS
 
-2. Access the application at http://localhost:8000
+## Deployment Process
 
-## Deployment
+1. All new features and changes should be developed in `main` branch
+2. When ready to deploy:
+   ```bash
+   # Update main branch
+   git checkout main
+   git pull origin main
 
-The application is containerized for deployment to ensure consistency between development and production environments.
+   # Merge changes into production
+   git checkout production
+   git merge main
 
-### Deployment Process
+   # Push to production
+   git push origin production
+   ```
 
-1. Develop and test locally using Docker to match production environment
-2. Merge completed features into the `development` branch
-3. Test thoroughly on the development branch
-4. When ready for production, merge into `main`
-5. Deploy to VPS using the deployment script:
-```bash
-./deploy-container.sh
-```
+3. Deploy to VPS:
+   ```bash
+   # SSH into VPS
+   ssh user@your-vps
 
-### Maintaining Consistency
+   # Pull latest production code
+   cd /path/to/game
+   git pull origin production
 
-To ensure consistency between local and VPS environments:
+   # Restart services
+   sudo systemctl restart game-web
+   ```
 
-1. Always use Docker for development to match production environment
-2. Use Git for code synchronization between environments
-3. Database changes should be scripted and versioned
-4. Use the provided backup scripts to preserve data:
-```bash
-./backup.sh
-```
+## Configuration Differences
 
-For full deployment details, see [DEPLOYMENT.md](DEPLOYMENT.md).
+The production branch contains specific configurations for the VPS environment:
 
-## VPS Environment
+1. Gunicorn settings in `gunicorn.conf.py`:
+   - Worker class: gevent
+   - Number of workers: 4
+   - Log paths: /var/log/game-web/
+   - Enhanced logging format
 
-The production deployment uses:
-- Nginx as a reverse proxy
-- Docker for containerization
-- Let's Encrypt for SSL certificates
-- Systemd for service management
+2. Application settings:
+   - Enhanced state logging
+   - Production-specific paths
+   - Debug mode disabled
 
-## Troubleshooting
+## Monitoring
 
-Common issues and their solutions can be found in the [MIGRATION-GUIDE.md](MIGRATION-GUIDE.md) file.
+- Application logs: `/var/log/game-web/`
+- Game state logs: `/var/log/game-web/game_state.log`
+- Gunicorn logs: 
+  - Access: `/var/log/game-web/gunicorn-access.log`
+  - Error: `/var/log/game-web/gunicorn-error.log`
+
+## Rollback Process
+
+If issues are found in production:
+
+1. Identify the last working commit
+   ```bash
+   git log --oneline
+   ```
+
+2. Rollback to that commit
+   ```bash
+   git checkout production
+   git reset --hard <commit-hash>
+   git push -f origin production
+   ```
+
+3. Deploy the rollback
+   ```bash
+   # On VPS
+   git pull origin production
+   sudo systemctl restart game-web
+   ```

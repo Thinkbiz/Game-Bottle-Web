@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Monsters and Treasure</title>
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-69G95PRCQQ"></script>
@@ -33,19 +34,18 @@
             }
         }
         
-        // Session ID management for the game
+        // Session ID management functions
         function getOrCreateSessionId() {
-            const cookieSessionId = '{{ get_template_cookie("session_id", "") }}';
-            if (cookieSessionId) {
-                return cookieSessionId;
-            } else {
-                const newSessionId = Math.floor(Math.random() * 10000000).toString();
-                document.cookie = `session_id=${newSessionId}; path=/; max-age=86400; SameSite=Strict`;
-                return newSessionId;
+            const existingId = localStorage.getItem('session_id');
+            if (existingId) {
+                return existingId;
             }
+            
+            const newId = generateUniqueSessionId();
+            localStorage.setItem('session_id', newId);
+            return newId;
         }
 
-        // Enhanced security for session ID generation
         function generateUniqueSessionId() {
             try {
                 // Generate cryptographically secure random values
@@ -269,125 +269,16 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/favicon.png">
     <link rel="stylesheet" href="/static/css/styles.css">
     <style>
-        :root {
-            --primary-color: #1e40af;
-            --secondary-color: #047857;
-            --danger-color: #dc2626;
-            --background-color: #ffffff;
-            --border-color: #e5e7eb;
-            --text-color: #333333;
-            --text-secondary: #666666;
-            
-            --space-xs: 0.25rem;
-            --space-sm: 0.5rem;
-            --space-md: 1rem;
-            --space-lg: 1.5rem;
-            --space-xl: 2rem;
-            
-            --game-image-height: 220px;
-            --button-height: 48px;
-            --container-width: 800px;
-            --game-message-height: auto; /* Changed from fixed 80px to auto */
-            --game-options-height: auto; /* Changed from fixed 180px to auto */
-            --min-game-options-height: 160px; /* Added minimum height */
-        }
-        
-        body {
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            font-family: system-ui, -apple-system, sans-serif;
-        }
-        
-        .game-container {
-            display: flex;
-            flex-direction: column;
-            max-width: var(--container-width);
-            margin: 0 auto;
-            padding: 1rem;
-            min-height: 100vh;
-            height: 100%; /* Ensure full height */
-            box-sizing: border-box; /* Include padding in height calculation */
-            overflow-x: hidden; /* Prevent horizontal scrolling */
-        }
-        
-        /* Add viewport height optimizations for mobile */
-        @media (max-height: 700px) {
-            .game-image-container {
-                height: 180px; /* Increased from 150px */
-            }
-            
-            .game-content {
-                min-height: 450px; /* Increased from 400px */
-                gap: 0.5rem; /* Increased from 0.25rem */
-            }
-            
-            .welcome-back-panel {
-                padding: 1rem;
-                margin: 0.5rem auto;
-            }
-            
-            .welcome-back-icon {
-                width: 70px; /* Reduced from 80px */
-                height: 70px; /* Reduced from 80px */
-            }
-            
-            :root {
-                --min-game-options-height: 140px;
-            }
-        }
-        
-        /* Image size optimization */
-        .game-image {
-            max-width: 100%;
-            height: auto;
-            max-height: 100%;
-        }
-        
-        /* Ensure buttons have appropriate touch targets on mobile */
-        @media (max-width: 600px) {
-            :root {
-                --space-lg: 0.75rem; /* Reduced from 1rem */
-                --space-xl: 1rem; /* Reduced from 1.5rem */
-                --game-image-height: 160px; /* Reduced from 180px */
-                --game-message-height: 60px;
-                --game-options-height: 160px;
-            }
-            
-            .btn-primary, .btn-secondary, .game-option {
-                min-height: 48px; /* Minimum size for touch targets */
-                padding: 0.5rem;
-            }
-            
-            /* Optimize the game title for mobile */
-            .game-title {
-                font-size: 1.5rem;
-                margin: var(--space-sm) 0;
-            }
-            
-            /* Make stats more compact on mobile */
-            .game-stats {
-                padding: var(--space-sm);
-                gap: var(--space-xs);
-            }
-            
-            /* Reduce vertical spacing */
-            .game-content {
-                gap: 0.25rem;
-            }
-        }
-
         .game-stats {
             display: flex;
-            align-items: stretch;
+            flex-direction: row;
+            justify-content: space-between;
             gap: 1rem;
-            padding: 1rem; /* Reduced from 1.5rem */
+            padding: 1.5rem;
             background: rgba(255, 255, 255, 0.8);
             border-radius: 12px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin: 0.5rem 0; /* Reduced from 1rem */
+            margin: 1rem 0;
             width: 100%;
         }
 
@@ -395,7 +286,6 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
             gap: 0.5rem;
             min-width: 0;
         }
@@ -406,32 +296,21 @@
             align-items: center;
             font-weight: 600;
             color: #333;
-            margin: 0;
-            padding: 0;
-            line-height: 1.5;
-            height: 1.5rem;
         }
 
         .progress-container {
-            position: relative;
             width: 100%;
-            height: 8px;
-            margin-top: auto;
-            margin-bottom: 0;
+            height: 12px;
             background: #e5e7eb;
-            border-radius: 4px;
+            border-radius: 6px;
             overflow: hidden;
-            transform: translateZ(0);
-            will-change: transform;
         }
 
         .progress-bar {
-            position: absolute;
-            inset: 0;
+            height: 100%;
             background: #1e40af;
-            border-radius: 4px;
-            transform-origin: left center;
-            transition: width 0.3s ease, background-color 1s ease;
+            border-radius: 6px;
+            transition: width 0.3s ease;
         }
 
         .progress-bar.increase {
@@ -449,7 +328,6 @@
             min-width: 3em;
             text-align: right;
             margin-left: 0.5rem;
-            line-height: 1.5;
         }
 
         /* Add animation for game images */
@@ -458,10 +336,7 @@
             transform: scale(0.9);
             transition: all 0.5s ease-out;
             max-width: 256px;
-            max-height: 256px;
-            width: auto;
-            height: auto;
-            object-fit: contain;
+            margin: 0 auto;
             filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
         }
 
@@ -487,242 +362,10 @@
         .health-width-80 { width: 80%; }
         .health-width-90 { width: 90%; }
         .health-width-100 { width: 100%; }
-
-        .game-content {
-            display: flex;
-            flex-direction: column;
-            min-height: 500px;
-            justify-content: space-between;
-            gap: 0.5rem; /* Reduced from 1rem */
-        }
-
-        .game-image-container {
-            flex: 0 0 auto;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: var(--game-image-height);
-            margin-bottom: 0.25rem; /* Reduced from 0.5rem */
-        }
-
-        .game-message {
-            flex: 0 0 auto;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            min-height: 80px; /* Changed from fixed height to min-height */
-            text-align: center;
-            padding: 1rem;
-            margin: 0.5rem 0;
-            overflow-y: visible; /* Changed from auto to visible */
-            line-height: 1.5; /* Added for better text readability */
-        }
-
-        .game-options {
-            flex: 0 0 auto;
-            min-height: var(--min-game-options-height);
-            height: auto; /* Allow content to determine height */
-            padding: 0.75rem;
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            justify-content: flex-start;
-        }
-
-        /* Welcome Back Panel Styles */
-        .welcome-back-panel {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 16px;
-            padding: 1rem; /* Reduced from 1.5rem */
-            margin: 0.5rem auto; /* Reduced from 1rem */
-            max-width: 600px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .welcome-back-icon {
-            width: 80px; /* Reduced from 100px */
-            height: 80px; /* Reduced from 100px */
-            margin: 0 auto 0.25rem; /* Reduced bottom margin */
-            display: block;
-        }
-
-        .last-played {
-            color: #666;
-            font-size: 0.9rem;
-            margin: 0.25rem 0;
-        }
-
-        .previous-achievements {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin: 0.25rem 0; /* Reduced from 0.5rem */
-            font-size: 0.9rem;
-        }
-
-        /* Game State Options Styles */
-        .game-option {
-            background: white;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            height: 56px;
-        }
-
-        .game-option:hover {
-            border-color: #1e40af;
-            transform: translateY(-2px);
-        }
-
-        .game-option.continue {
-            border-color: #1e40af;
-            background: #1e40af;
-            color: white;
-        }
-
-        .game-option.new-journey {
-            border-color: #047857;
-        }
-
-        .game-option.abandon {
-            border-color: #dc2626;
-        }
-
-        .option-icon {
-            font-size: 1.5rem;
-        }
-
-        .option-details {
-            flex: 1;
-        }
-
-        .option-title {
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .option-description {
-            font-size: 0.8rem;
-            color: #666;
-            margin: 0.25rem 0 0;
-        }
-
-        /* Button Styles */
-        .btn-primary, .btn-secondary {
-            height: var(--button-height);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 0.25rem; /* Reduced from 0.5rem */
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            width: 100%;
-        }
-        
-        input[type="text"] {
-            height: 48px;
-            padding: 0 1rem;
-            border-radius: 8px;
-            border: 2px solid #e5e7eb;
-            width: 100%;
-            font-size: 16px; /* Prevent zoom on mobile */
-            box-sizing: border-box;
-        }
-        
-        /* Fix vertical spacing in the welcome-back-panel */
-        .welcome-back-panel h2 {
-            margin-top: 0.25rem; /* Reduced from 0.5rem */
-            margin-bottom: 0.25rem;
-        }
-        
-        /* Fix the footer to stay at the bottom without excessive margin */
-        footer {
-            padding: 0.5rem 0; /* Reduced from 1rem */
-            margin-top: auto;
-        }
-        
-        /* Add a fixed class for important buttons that should stay in view */
-        .fixed-bottom {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            padding: 0.75rem; /* Reduced from 1rem */
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            z-index: 100;
-            transition: transform 0.3s ease;
-        }
-        
-        /* Remove outline on buttons */
-        button:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px #1e40af;
-        }
-        
-        /* Reduce the space between game message and buttons */
-        .space-y-3 {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem; /* Reduced from 0.5rem */
-        }
-        
-        .space-y-4 {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem; /* Reduced from 0.75rem */
-        }
-
-        /* Ensure consistent layout with fixed heights */
-        .main-game-area {
-            display: flex;
-            flex-direction: column;
-            min-height: calc(100vh - 200px); /* Increased from 180px */
-            height: auto; /* Allow content to determine height */
-            justify-content: space-between;
-        }
-
-        /* Fixed position for buttons section to prevent movement */
-        .button-container {
-            position: relative;
-            min-height: var(--game-options-height);
-            margin-top: auto; /* Push to bottom of container */
-        }
-
-        /* Ensure text doesn't get cut off on very small screens */
-        @media (max-width: 360px) {
-            .game-message {
-                font-size: 0.9rem;
-                padding: 0.75rem;
-            }
-            
-            .btn-primary, .btn-secondary, .game-option {
-                padding: 0.5rem 0.75rem;
-                min-height: 44px;
-            }
-        }
     </style>
 </head>
-<body>
+<body data-event-type="{{ event_type if event_type else '' }}" 
+      data-victory-type="{{ victory_type if victory_type else '' }}">
     <div class="game-container">
         <header class="game-header">
             <h1 class="game-title">Monsters and Treasure</h1>
@@ -734,11 +377,10 @@
                         <span class="stat-value">{{player_stats['health'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar health-bar" 
+                        <div class="progress-bar health-bar health-width-{{(player_stats['health'] if player_stats else 0) // 10 * 10}}" 
                              data-value="{{player_stats['health'] if player_stats else 0}}" 
                              data-previous="{{previous_stats['health'] if previous_stats else 0}}"
-                             data-max="100"
-                             style="width: 100%">
+                             data-max="100">
                         </div>
                     </div>
                 </div>
@@ -748,11 +390,10 @@
                         <span class="stat-value">{{player_stats['score'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar score-bar"
+                        <div class="progress-bar score-bar health-width-{{min(100, (player_stats['score'] if player_stats else 0) / max(100, (player_stats['score'] if player_stats else 100)) * 100) // 10 * 10}}"
                              data-value="{{player_stats['score'] if player_stats else 0}}"
                              data-previous="{{previous_stats['score'] if previous_stats else 0}}"
-                             data-max="100"
-                             style="width: 100%">
+                             data-max="100">
                         </div>
                     </div>
                 </div>
@@ -762,11 +403,10 @@
                         <span class="stat-value">{{player_stats['xp'] if player_stats else 0}}</span>
                     </div>
                     <div class="progress-container">
-                        <div class="progress-bar xp-bar"
+                        <div class="progress-bar xp-bar health-width-{{((player_stats['xp'] if player_stats else 0) / 200 * 100) // 10 * 10}}"
                              data-value="{{player_stats['xp'] if player_stats else 0}}"
                              data-previous="{{previous_stats['xp'] if previous_stats else 0}}"
-                             data-max="200"
-                             style="width: 100%">
+                             data-max="200">
                         </div>
                     </div>
                 </div>
@@ -774,88 +414,9 @@
             % end
         </header>
         
-        <main class="game-content main-game-area">
-            <script>
-                console.log("DEBUG: returning_player value: ", "{{returning_player}}");
-            </script>
-            % if defined('returning_player') and returning_player:
-            <div class="welcome-back-panel">
-                <img src="/static/images/states/welcome_back.png" alt="Welcome Back" class="welcome-back-icon">
-                <h2>Welcome Back, {{player_name}}!</h2>
-                <p class="last-played">Last played: {{last_played_time}}</p>
-                <div class="previous-achievements">
-                    <div>🏆 Best Score: {{best_score}}</div>
-                    <div>⚔️ Battles: {{total_battles}}</div>
-                    <div>💎 Treasures: {{treasures_found}}</div>
-                </div>
-            </div>
-
-            <div class="game-options">
-                <button class="game-option continue" onclick="continueGame()">
-                    <span class="option-icon">⚔️</span>
-                    <div class="option-details">
-                        <h3 class="option-title">Continue Adventure</h3>
-                        <p class="option-description">Current Progress: XP {{player_stats['xp']}}, Score {{player_stats['score']}}</p>
-                    </div>
-                </button>
-
-                <button class="game-option new-journey" onclick="showNewJourneyOptions()">
-                    <span class="option-icon">🔄</span>
-                    <div class="option-details">
-                        <h3 class="option-title">Start New Journey</h3>
-                        <p class="option-description">Begin a fresh adventure</p>
-                    </div>
-                </button>
-
-                <button class="game-option abandon" onclick="confirmAbandon()">
-                    <span class="option-icon">❌</span>
-                    <div class="option-details">
-                        <h3 class="option-title">Abandon Quest</h3>
-                        <p class="option-description">Clear progress & leaderboard entry</p>
-                    </div>
-                </button>
-            </div>
-
-            <!-- New Journey Modal -->
-            <div id="newJourneyModal" class="modal" style="display: none;">
-                <div class="modal-content">
-                    <h3>Start New Journey</h3>
-                    <form id="newJourneyForm" action="/start" method="POST">
-                        <div class="form-group">
-                            <label>
-                                <input type="radio" name="username_choice" value="keep" checked>
-                                Keep current username ({{player_name}})
-                            </label>
-                        </div>
-                        <div class="form-group">
-                            <label>
-                                <input type="radio" name="username_choice" value="new">
-                                Choose new username
-                            </label>
-                            <input type="text" name="new_username" placeholder="Enter new username" disabled>
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn-primary">Start New Journey</button>
-                            <button type="button" class="btn-secondary" onclick="closeModal('newJourneyModal')">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Abandon Confirmation Modal -->
-            <div id="abandonModal" class="modal" style="display: none;">
-                <div class="modal-content">
-                    <h3>Abandon Quest?</h3>
-                    <p>This will permanently remove your progress and leaderboard entry. This action cannot be undone.</p>
-                    <div class="modal-actions">
-                        <button onclick="abandonQuest()" class="btn-danger">Yes, Abandon Quest</button>
-                        <button onclick="closeModal('abandonModal')" class="btn-secondary">No, Keep Playing</button>
-                    </div>
-                </div>
-            </div>
-            % else:
+        <main class="game-content">
             % if get('event_type'):
-            <div class="game-image-container">
+            <div class="mb-6 text-center">
                 % if event_type == 'monster':
                 <img src="/static/images/monster.png" alt="Monster" class="game-image">
                 % elif event_type == 'treasure':
@@ -878,8 +439,6 @@
                 <img src="/static/images/states/rest_failed.png" alt="Rest Failed" class="game-image">
                 % elif event_type == 'welcome':
                 <img src="/static/images/states/welcome.png" alt="Welcome" class="game-image">
-                % elif event_type == 'welcome_back':
-                <img src="/static/images/states/welcome_back.png" alt="Welcome Back" class="game-image">
                 % elif event_type == 'journey_begin':
                 <img src="/static/images/states/journey_begin.png" alt="Journey Begins" class="game-image">
                 % elif event_type == 'adventure_start':
@@ -910,16 +469,16 @@
                 {{message}}
             </div>
 
-            <div class="game-options button-container">
+            <div class="game-options">
                 % if show_name_input:
-                <form id="playerForm" method="POST" action="/start" class="space-y-4">
-                    <input type="text" name="player_name" placeholder="Enter your name" required class="input w-full" pattern="^[a-zA-Z0-9_-]{1,32}$">
+                <form action="/start" method="post" class="space-y-4">
+                    <input type="text" name="player_name" placeholder="Enter your name" required class="input w-full">
                     <button type="submit" class="btn-primary w-full">Start Adventure</button>
                 </form>
                 % end
                 
                 % if show_restart:
-                <form id="continueForm" method="POST" action="/continue" class="space-y-4">
+                <form action="/start" method="post">
                     <input type="hidden" name="player_name" value="{{player_name}}">
                     <button type="submit" class="btn-primary w-full">Restart Adventure</button>
                 </form>
@@ -947,7 +506,6 @@
                 </form>
                 % end
             </div>
-            % end
         </main>
 
         <footer class="mt-8 text-center">
@@ -955,300 +513,11 @@
         </footer>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Debug for troubleshooting welcome_back
-        console.log('DEBUG - event_type: {{event_type if event_type else "not set"}}');
-        console.log('DEBUG - returning_player: {{returning_player if get("returning_player") is not None else "not set"}}');
-        console.log('DEBUG - Python get("returning_player") evaluation: {% if get("returning_player") %}true{% else %}false{% end %}');
-        console.log('DEBUG - player_name: {{player_name if player_name else "not set"}}');
-        console.log('DEBUG - welcome-back-panel visibility:', document.querySelector('.welcome-back-panel') ? 'exists' : 'not found');
-        console.log('DEBUG - Template vars available:', JSON.stringify({
-            player_name: '{{player_name if player_name else ""}}',
-            event_type: '{{event_type if event_type else ""}}',
-            returning_player: '{{returning_player if get("returning_player") is not None else "undefined"}}',
-            show_name_input: '{{show_name_input if get("show_name_input") is not None else "undefined"}}',
-            show_choices: '{{show_choices if get("show_choices") is not None else "undefined"}}'
-        }));
-        
-        // Track page view with enhanced context
-        trackGameEvent('screen_view', {
-            health: '{{player_stats["health"] if player_stats else 0}}',
-            score: '{{player_stats["score"] if player_stats else 0}}',
-            xp: '{{player_stats["xp"] if player_stats else 0}}'
-        });
+    <div id="gameStats" 
+         data-initial-stats='{"health": {{player_stats["health"] if player_stats else 0}}, "score": {{player_stats["score"] if player_stats else 0}}, "xp": {{player_stats["xp"] if player_stats else 0}}}'>
+    </div>
 
-        // Optimize for mobile viewport height issues
-        function setInitialHeight() {
-            // Set the initial height for mobile browsers
-            const vh = window.innerHeight * 0.01;
-            document.documentElement.style.setProperty('--vh', `${vh}px`);
-            
-            // Adjust main content to fit viewport
-            const gameContent = document.querySelector('.game-content');
-            if (gameContent) {
-                gameContent.style.minHeight = `calc(100vh - 150px)`;
-            }
-        }
-        
-        // Run once on page load
-        setInitialHeight();
-        
-        // Re-run on resize and orientation change
-        window.addEventListener('resize', setInitialHeight);
-        window.addEventListener('orientationchange', setInitialHeight);
-
-        // Improve scrolling behavior
-        function scrollToButtons() {
-            // Only on smaller screens/mobile
-            if (window.innerWidth <= 768) {
-                const gameOptions = document.querySelector('.game-options');
-                if (gameOptions) {
-                    // Give time for rendering and animations
-                    setTimeout(() => {
-                        gameOptions.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300);
-                }
-            }
-        }
-
-        // Call on page load if necessary
-        if (window.innerWidth <= 768) {
-            scrollToButtons();
-        }
-
-        // Track all button clicks with enhanced context
-        document.querySelectorAll('button[name="choice"]').forEach(button => {
-            button.addEventListener('click', function() {
-                const choice = this.value;
-                const eventParams = {
-                    choice: choice,
-                    health: '{{player_stats["health"] if player_stats else 0}}',
-                    score: '{{player_stats["score"] if player_stats else 0}}',
-                    xp: '{{player_stats["xp"] if player_stats else 0}}'
-                };
-
-                if (['fight', 'run'].includes(choice)) {
-                    trackGameEvent('combat_choice', eventParams);
-                    
-                    // Update session stats for combat encounter
-                    fetch('/api/stats/session', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            player_name: '{{player_name if player_name else "anonymous"}}',
-                            session_id: getOrCreateSessionId(),
-                            combat_encounters: 1
-                        })
-                    }).catch(error => console.error('Error updating combat stats:', error));
-                } else if (['search_alone', 'get_help', 'ignore'].includes(choice)) {
-                    trackGameEvent('treasure_choice', eventParams);
-                } else if (choice === 'rest') {
-                    trackGameEvent('rest_choice', eventParams);
-                } else if (choice === 'adventure') {
-                    trackGameEvent('adventure_choice', eventParams);
-                }
-            });
-        });
-        // Track game over and victory events
-        if ('{{ event_type }}' === 'gameover') {
-            trackGameEvent('game_over', {
-                final_score: '{{ player_stats["score"] if player_stats else 0 }}',
-                final_xp: '{{ player_stats["xp"] if player_stats else 0 }}',
-                total_health: '{{ player_stats["health"] if player_stats else 0 }}'
-            });
-        } else if ('{{ event_type }}' === 'victory') {
-            trackGameEvent('victory', {
-                victory_type: '{{ victory_type }}',
-                final_score: '{{ player_stats["score"] if player_stats else 0 }}',
-                final_xp: '{{ player_stats["xp"] if player_stats else 0 }}',
-                total_health: '{{ player_stats["health"] if player_stats else 0 }}'
-            });
-        }
-        // Fixed the syntax error by replacing '% end' with '}' to properly close the 'else if' block
-
-        // Add animation for game images
-        function showGameImages() {
-            const images = document.querySelectorAll('.game-image');
-            images.forEach(img => {
-                // Wait for image to load
-                if (img.complete) {
-                    setTimeout(() => img.classList.add('show'), 100);
-                } else {
-                    img.onload = () => setTimeout(() => img.classList.add('show'), 100);
-                }
-            });
-        }
-
-        // Run image animations
-        showGameImages();
-
-        function updateProgressBars() {
-            const bars = document.querySelectorAll('.progress-bar');
-            
-            bars.forEach(bar => {
-                const currentValue = parseFloat(bar.getAttribute('data-value'));
-                const previousValue = parseFloat(bar.getAttribute('data-previous'));
-                
-                // Only animate if the values are different AND not undefined/null
-                if (!isNaN(currentValue) && !isNaN(previousValue) && currentValue !== previousValue) {
-                    // Remove existing classes first
-                    bar.classList.remove('increase', 'decrease');
-                    
-                    // Force a reflow
-                    void bar.offsetWidth;
-                    
-                    // Add appropriate class based on value change
-                    if (currentValue > previousValue) {
-                        bar.classList.add('increase');
-                    } else if (currentValue < previousValue) {
-                        bar.classList.add('decrease');
-                    }
-                    
-                    // Schedule removal of animation classes
-                    setTimeout(() => {
-                        bar.classList.remove('increase', 'decrease');
-                    }, 1000);
-                }
-            });
-        }
-
-        // Run animation check immediately after page load
-        updateProgressBars();
-        
-        // Also run when the page content updates
-        const observer = new MutationObserver(mutations => {
-            // Only update if data attributes changed
-            const shouldUpdate = mutations.some(mutation => 
-                mutation.type === 'attributes' && 
-                (mutation.attributeName === 'data-value' || mutation.attributeName === 'data-previous')
-            );
-            if (shouldUpdate) {
-                updateProgressBars();
-            }
-        });
-        
-        observer.observe(document.body, { 
-            attributes: true,
-            attributeFilter: ['data-value', 'data-previous'],
-            subtree: true 
-        });
-
-        // Function to update progress bar widths
-        function updateProgressWidth(bar, value, max) {
-            // Remove all width classes
-            bar.classList.forEach(className => {
-                if (className.startsWith('health-width-')) {
-                    bar.classList.remove(className);
-                }
-            });
-            
-            // Calculate percentage and round to nearest 10
-            const percentage = Math.round((value / max) * 10) * 10;
-            bar.classList.add(`health-width-${percentage}`);
-        }
-
-        // Update progress bar widths
-        document.querySelectorAll('.progress-bar').forEach(bar => {
-            const value = parseFloat(bar.getAttribute('data-value'));
-            const max = parseFloat(bar.getAttribute('data-max'));
-            const width = bar.classList.contains('xp-bar') ? 
-                         Math.min(100, (value / 2)) : 
-                         Math.min(100, value);
-            bar.style.width = width + '%';
-        });
-
-        function continueGame() {
-            window.location.href = '/continue';
-        }
-
-        function showNewJourneyOptions() {
-            document.getElementById('newJourneyModal').style.display = 'block';
-        }
-
-        function confirmAbandon() {
-            document.getElementById('abandonModal').style.display = 'block';
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-
-        function abandonQuest() {
-            // Create and submit a form instead of using fetch with JSON
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/abandon';
-            
-            const playerNameInput = document.createElement('input');
-            playerNameInput.type = 'hidden';
-            playerNameInput.name = 'player_name';
-            playerNameInput.value = '{{player_name}}';
-            form.appendChild(playerNameInput);
-            
-            document.body.appendChild(form);
-            form.submit();
-        }
-        
-        // Enable/disable new username input based on radio selection
-        document.querySelectorAll('input[name="username_choice"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                const newUsernameInput = document.querySelector('input[name="new_username"]');
-                newUsernameInput.disabled = this.value === 'keep';
-                if (this.value === 'new') {
-                    newUsernameInput.focus();
-                }
-            });
-        });
-
-        // Make functions globally available
-        window.continueGame = continueGame;
-        window.showNewJourneyOptions = showNewJourneyOptions;
-        window.confirmAbandon = confirmAbandon;
-        window.closeModal = closeModal;
-        window.abandonQuest = abandonQuest;
-
-        // Input validation
-        function validatePlayerName(name) {
-            return /^[a-zA-Z0-9_-]{1,32}$/.test(name);
-        }
-
-        document.getElementById('playerForm')?.addEventListener('submit', function(e) {
-            const playerName = document.getElementById('player_name')?.value;
-            if (!validatePlayerName(playerName)) {
-                e.preventDefault();
-                alert('Invalid player name. Use only letters, numbers, underscores, and hyphens (max 32 characters).');
-            }
-        });
-
-        // Prevent double form submission
-        const forms = document.querySelectorAll('form');
-        forms.forEach(form => {
-            form.addEventListener('submit', function(e) {
-                if (this.hasAttribute('data-submitted')) {
-                    e.preventDefault();
-                    return;
-                }
-                this.setAttribute('data-submitted', 'true');
-                setTimeout(() => this.removeAttribute('data-submitted'), 5000);
-            });
-        });
-
-        // Sanitize content before display
-        function sanitizeHTML(str) {
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
-        // Update message display with sanitization
-        function updateMessage(message) {
-            const messageElement = document.getElementById('message');
-            if (messageElement) {
-                messageElement.innerHTML = sanitizeHTML(message);
-            }
-        }
-    });
-    </script>
+    <!-- Include external JavaScript file -->
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
 </body>
 </html> 

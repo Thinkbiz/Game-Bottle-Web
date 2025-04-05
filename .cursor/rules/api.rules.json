@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "api_response_format",
+      "description": "Standardize API response format",
+      "pattern": "Response: ({'status': '(success|healthy)'|{'error': '[^']+')",
+      "antiPattern": "Response: (?!{'status'|{'error'})",
+      "severity": "error"
+    },
+    {
+      "name": "api_endpoint_structure",
+      "description": "Follow RESTful endpoint structure",
+      "pattern": "/(api|health)/[a-zA-Z0-9_/]+",
+      "antiPattern": "\\.php|\\.asp",
+      "severity": "error"
+    },
+    {
+      "name": "request_headers",
+      "description": "Include required request headers",
+      "pattern": "'Content-Type': 'application/json'.*'Accept':",
+      "antiPattern": "Headers: (?!.*Content-Type)",
+      "severity": "warning"
+    },
+    {
+      "name": "secure_transport",
+      "description": "Use HTTPS for all API calls",
+      "pattern": "'X-Forwarded-Proto': 'https'",
+      "antiPattern": "http://(?!localhost)",
+      "severity": "error"
+    },
+    {
+      "name": "request_logging",
+      "description": "Log API requests with timestamp",
+      "pattern": "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d+.*Request:",
+      "antiPattern": "Request:(?!.*\\d{4}-\\d{2}-\\d{2})",
+      "severity": "warning"
+    }
+  ]
+} 

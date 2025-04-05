@@ -1,29 +1,28 @@
-from bottle import route, run, template, static_file, request, redirect, response, default_app, error, HTTPError, abort
+from bottle import route, run, template, static_file, request, redirect, response, default_app, abort
 import random
 from database import (init_db, add_to_leaderboard, get_leaderboard, 
                      update_regional_stats, get_regional_stats,
                      update_player_achievement, update_player_session_stats,
-                     get_player_session_stats, get_game_state_from_db,
-                     save_game_state_to_db, cleanup_expired_sessions)
+                     get_player_session_stats)
 import json
 import os
 from datetime import datetime
 import logging
 import sys
 from typing import Dict, Any, Optional, Union, Tuple
-from config import (DEVELOPMENT_CONFIG, LOG_DIR, DATA_DIR, DB_PATH, 
-                   SESSION_COOKIE_NAME, SESSION_COOKIE_HTTPONLY, 
-                   SESSION_COOKIE_SECURE, SESSION_COOKIE_PATH,
-                   SESSION_EXPIRY_DAYS, TEMPLATE_DEFAULTS, VICTORY_TYPES)
-import sqlite3
-from logger import get_logger, get_session_logger, game_logger as logger, game_state_logger
-import time
-import threading
-import secrets
-import re
-from functools import wraps
+from config import DEVELOPMENT_CONFIG
+from gevent import pywsgi
+from geventwebsocket import WebSocketError
+from geventwebsocket.handler import WebSocketHandler
 
 # Game Constants
+VICTORY_TYPES = {
+    "PERFECT": "Perfect Victory",
+    "GLORIOUS": "Glorious Victory",
+    "PYRRHIC": "Pyrrhic Victory",
+    "STANDARD": "Standard Victory"
+}
+
 GAME_THRESHOLDS = {
     "VICTORY_XP": 200,
     "PERFECT_HEALTH": 80,
@@ -32,40 +31,26 @@ GAME_THRESHOLDS = {
     "PYRRHIC_HEALTH": 20
 }
 
-# Define event types for consistent usage
 EVENT_TYPES = {
     "MONSTER": "monster",
     "TREASURE": "treasure",
     "TREASURE_FOUND": "treasure_found",
+    "TRAP": "trap",
+    "LOCAL": "local",
+    "REST": "rest",
+    "WELCOME": "welcome",
+    "GAMEOVER": "gameover",
+    "JOURNEY_BEGIN": "journey_begin",
+    "ADVENTURE_START": "adventure_start",
     "TREASURE_NOT_FOUND": "treasure_not_found",
     "TREASURE_HELP_FAILED": "treasure_help_failed",
     "TREASURE_IGNORED": "treasure_ignored",
-    "TRAP": "trap",
-    "LOCAL": "local",
-    "LOCAL_UNAVAILABLE": "local_unavailable",
-    "COMBAT_VICTORY": "combat_victory",
-    "COMBAT_DEFEAT": "combat_defeat",
-    "COMBAT_ESCAPE": "combat_escape",
-    "REST": "rest",
-    "REST_FAILED": "rest_failed",
-    "WELCOME": "welcome",
-    "WELCOME_BACK": "welcome_back",  # Make sure this is here
-    "JOURNEY_BEGIN": "journey_begin",  # For brand new players
-    "JOURNEY_CONTINUE": "adventure_start",  # For continuing players
-    "ADVENTURE_START": "adventure_start",
     "VICTORY_PERFECT": "victory_perfect",
     "VICTORY_GLORIOUS": "victory_glorious",
     "VICTORY_PYRRHIC": "victory_pyrrhic",
     "VICTORY_STANDARD": "victory_standard",
-    "GAMEOVER": "gameover"
-}
-
-# Event type mapping for victories
-VICTORY_EVENT_TYPES = {
-    "Perfect Victory": "victory_perfect",
-    "Glorious Victory": "victory_glorious", 
-    "Pyrrhic Victory": "victory_pyrrhic",
-    "Standard Victory": "victory_standard"
+    "REST_FAILED": "rest_failed",
+    "LOCAL_UNAVAILABLE": "local_unavailable"
 }
 
 # Environment variables with defaults
@@ -91,8 +76,20 @@ game_state_handler = logging.FileHandler('logs/game_state.log')
 game_state_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 game_state_logger.addHandler(game_state_handler)
 
-# Initialize with empty game_states for backward compatibility
-game_states = {}
+# Default template variables
+TEMPLATE_DEFAULTS: Dict[str, Any] = {
+    'show_name_input': False,
+    'show_choices': False,
+    'show_monster_choices': False,
+    'show_treasure_choices': False,
+    'show_restart': False,
+    'message': '',
+    'player_stats': None,
+    'event_type': None,
+    'victory_type': None,
+    'previous_stats': None,
+    'player_name': None
+}
 
 # Initialize player stats
 DEFAULT_STATS: Dict[str, int] = {
@@ -101,18 +98,13 @@ DEFAULT_STATS: Dict[str, int] = {
     'xp': 0
 }
 
-# Constants for request validation
-MAX_REQUEST_SIZE = 10 * 1024  # 10KB size limit
-
-# Schedule periodic session cleanup
-def cleanup_old_sessions():
-    """Cleanup expired sessions periodically"""
-    try:
-        count = cleanup_expired_sessions(SESSION_EXPIRY_DAYS)
-        if count > 0:
-            logger.info(f"Cleaned up {count} expired game sessions")
-    except Exception as e:
-        logger.error(f"Error during session cleanup: {e}")
+# Event type mapping for victories
+VICTORY_EVENT_TYPES = {
+    "Perfect Victory": "victory_perfect",
+    "Glorious Victory": "victory_glorious", 
+    "Pyrrhic Victory": "victory_pyrrhic",
+    "Standard Victory": "victory_standard"
+}
 
 def test_template_vars(template_vars: Dict[str, Any]) -> bool:
     """Test template variables before rendering"""
@@ -178,79 +170,46 @@ def safe_template(route_func):
 
 def get_session_id() -> str:
     """Get or create session ID"""
-    # Check if we've already generated a session ID for this request
-    if hasattr(request, '_cached_session_id'):
-        return request._cached_session_id
-        
-    # Get from cookie or generate new
-    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    session_id = request.cookies.get('session_id')
     if not session_id:
         session_id = str(random.randint(1000000, 9999999))
-        response.set_cookie(
-            SESSION_COOKIE_NAME, 
-            session_id, 
-            path=SESSION_COOKIE_PATH,
-            httponly=SESSION_COOKIE_HTTPONLY,
-            secure=SESSION_COOKIE_SECURE
-        )
-        logger.debug(f"Created new session ID: {session_id}")
-    else:
-        logger.debug(f"Using existing session ID: {session_id}")
-    
-    # Cache the session ID for this request
-    request._cached_session_id = session_id
+        response.set_cookie('session_id', session_id, path='/')
     return session_id
 
 def get_game_state() -> Dict[str, Any]:
-    """Get current game state from database"""
+    """Get current game state"""
     session_id = get_session_id()
-    session_logger = get_session_logger('game_state', session_id)
-    session_logger.debug(f"Getting game state for session {session_id}")
-    
-    # Get state from database
-    state = get_game_state_from_db(session_id)
+    logger.debug(f"Getting game state for session {session_id}")
+    state = game_states.get(session_id, {})
     
     # Initialize previous_stats if not present
     if 'stats' in state and 'previous_stats' not in state:
         state['previous_stats'] = state['stats'].copy()
     
-    session_logger.debug(f"Current game state for session {session_id}: {json.dumps(state, indent=2)}")
+    game_state_logger.debug(f"Current game state for session {session_id}: {json.dumps(state, indent=2)}")
     return state
 
 def save_game_state(state: Dict[str, Any]) -> None:
-    """Save current game state to database"""
+    """Save current game state"""
     session_id = get_session_id()
-    session_logger = get_session_logger('game_state', session_id)
-    player_name = state.get('player_name', 'anonymous')
-    
-    session_logger.debug(f"Saving game state for session {session_id}")
-    
-    # Get previous state for logging transition
-    current_state = get_game_state_from_db(session_id)
+    logger.debug(f"Saving game state for session {session_id}")
     
     # Store current stats as previous before updating
     if 'stats' in state:
+        current_state = game_states.get(session_id, {})
         if 'stats' in current_state:
             state['previous_stats'] = current_state['stats'].copy()
-            session_logger.info(f"State transition for session {session_id}:")
-            session_logger.info(f"Previous stats: {json.dumps(current_state['stats'], indent=2)}")
-            session_logger.info(f"New stats: {json.dumps(state['stats'], indent=2)}")
+            game_state_logger.info(f"State transition for session {session_id}:")
+            game_state_logger.info(f"Previous stats: {json.dumps(current_state['stats'], indent=2)}")
+            game_state_logger.info(f"New stats: {json.dumps(state['stats'], indent=2)}")
         else:
             state['previous_stats'] = state['stats'].copy()
-            session_logger.info(f"Initial state for session {session_id}: {json.dumps(state['stats'], indent=2)}")
+            game_state_logger.info(f"Initial state for session {session_id}: {json.dumps(state['stats'], indent=2)}")
     
-    # Save to database
-    success = save_game_state_to_db(session_id, player_name, state, SESSION_EXPIRY_DAYS)
-    
-    if not success:
-        session_logger.error(f"Failed to save game state for session {session_id}")
+    game_states[session_id] = state
 
 def determine_victory_type(stats):
     """Determine the type of victory based on player stats."""
-    # First check if player has enough XP for victory
-    if stats['xp'] < GAME_THRESHOLDS["VICTORY_XP"]:
-        return None
-        
     if stats['health'] > GAME_THRESHOLDS["PERFECT_HEALTH"] and stats['score'] > GAME_THRESHOLDS["PERFECT_SCORE"]:
         return VICTORY_TYPES["PERFECT"]
     elif stats['health'] > GAME_THRESHOLDS["GLORIOUS_HEALTH"]:
@@ -274,28 +233,11 @@ def get_victory_message(victory_type, player_name):
     }
     return messages.get(victory_type, messages["Standard Victory"])
 
-# Start a background thread to periodically clean up expired sessions
-def start_session_cleanup_scheduler():
-    """Start a background thread to periodically clean up expired sessions"""
-    def cleanup_thread():
-        while True:
-            try:
-                cleanup_old_sessions()
-                # Run cleanup every 6 hours
-                time.sleep(6 * 60 * 60)  # 6 hours in seconds
-            except Exception as e:
-                logger.error(f"Error in cleanup thread: {e}")
-                # If there's an error, wait a bit and try again
-                time.sleep(60)
-    
-    # Create and start the thread
-    cleanup_thread = threading.Thread(target=cleanup_thread, daemon=True)
-    cleanup_thread.start()
-    logger.info("Session cleanup scheduler started")
-
-# Initialize database and start schedulers
+# Initialize database
 init_db()
-start_session_cleanup_scheduler()
+
+# Game state storage - separate for each session
+game_states = {}
 
 # Add request logging middleware
 def log_to_logger(fn):
@@ -313,779 +255,115 @@ def log_to_logger(fn):
         return actual_response
     return _log_to_logger
 
-def validate_request(route_func):
-    """Request validation middleware"""
-    @wraps(route_func)
-    def wrapper(*args, **kwargs):
-        # Check request size
-        content_length = request.get_header('Content-Length')
-        if content_length and int(content_length) > MAX_REQUEST_SIZE:
-            logger.warning(f"Request too large: {content_length} bytes")
-            response.status = 413
-            return {'error': 'Request too large'}
-        
-        # Check content type for unsafe requests
-        if request.method in ('POST', 'PUT'):
-            content_type = request.get_header('Content-Type', '')
-            if not (content_type.startswith('application/x-www-form-urlencoded') or 
-                    content_type.startswith('multipart/form-data')):
-                logger.warning(f"Invalid content type: {content_type}")
-                response.status = 415
-                return "Invalid content type"
-        
-        # Simple rate limiting
-        client_ip = request.remote_addr
-        current_time = time.time()
-        
-        # Get rate limit data
-        rate_data = getattr(request.app, 'rate_limit_data', {})
-        
-        if client_ip in rate_data:
-            last_request, count = rate_data[client_ip]
-            # Reset count if outside window
-            if current_time - last_request > 1:  # 1 second window
-                rate_data[client_ip] = (current_time, 1)
-            # Check if rate limit exceeded
-            elif count >= 10:  # Max 10 requests per second
-                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-                response.status = 429
-                return {'error': 'Too many requests'}
-            else:
-                rate_data[client_ip] = (current_time, count + 1)
-        else:
-            rate_data[client_ip] = (current_time, 1)
-        
-        # Store updated rate limit data
-        request.app.rate_limit_data = rate_data
-        
-        return route_func(*args, **kwargs)
-    return wrapper
-
-# Apply security headers
-def security_headers(route_func):
-    """Add security headers to response"""
-    @wraps(route_func)
-    def wrapper(*args, **kwargs):
-        response.headers.update({
-            'X-Frame-Options': 'SAMEORIGIN',
-            'X-Content-Type-Options': 'nosniff',
-            'X-XSS-Protection': '1; mode=block',
-            'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.google-analytics.com",
-            'Referrer-Policy': 'strict-origin-when-cross-origin',
-            'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
-        })
-        if SESSION_COOKIE_SECURE:
-            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        return route_func(*args, **kwargs)
-    return wrapper
-
-def get_template_cookie(name: str, default: str = '') -> str:
-    """Safe function to get cookie value in templates"""
-    return request.cookies.get(name, default)
-
-def set_template_cookie(name: str, value: str, **options) -> None:
-    """Safe function to set cookie value in templates"""
-    response.set_cookie(name, value, **options)
-
-def template_validate_input(value, pattern=r'^[a-zA-Z0-9_-]{1,32}$'):
-    """Helper function to validate input in templates"""
-    return bool(re.match(pattern, str(value))) if value else False
-
-def template_get_session_id():
-    """Helper function to get session ID in templates"""
-    return get_session_id()
-
-def template_get_event_type(victory_type=None):
-    """Get an event type identifier for template rendering"""
-    if victory_type:
-        return get_event_type(victory_type)
-    return "default"
-
-# Update TEMPLATE_DEFAULTS with helper functions
-TEMPLATE_DEFAULTS.update({
-    'get_template_cookie': get_template_cookie,
-    'set_template_cookie': set_template_cookie,
-    'validate_input': template_validate_input,
-    'get_session_id': template_get_session_id,
-    'get_event_type': template_get_event_type,
-})
-
 @route('/')
-@security_headers
-@validate_request
 @safe_template
 def game():
-    """Show the main game page"""
-    session_id = get_session_id()
-    session_logger = get_session_logger('game', session_id)
-    
-    session_logger.info(f"DEBUG: Accessing main game route with session_id: {session_id}")
-    
-    # Get the current game state
-    state = get_game_state()
-    
+    logger.debug("Handling root route")
     template_vars = TEMPLATE_DEFAULTS.copy()
-    template_vars['returning_player'] = False
+    game_state = get_game_state()
     
-    # If this is a new game or no state exists, prompt for name
-    if not state or 'player_name' not in state or not state.get('player_name'):
-        session_logger.debug("No active game found, showing name input")
-        template_vars['show_name_input'] = True
-        return template('views/game', **template_vars)
-    
-    player_name = state.get('player_name', 'Adventurer')
-    stats = state.get('stats', DEFAULT_STATS.copy())
-    
-    session_logger.info(f"DEBUG: Player {player_name} found with session_id: {session_id}")
-    
-    # Get player session stats for returning player experience
-    try:
-        session_logger.info(f"DEBUG: About to call get_player_session_stats for {player_name} with session_id: {session_id}")
-        session_stats = get_player_session_stats(player_name, session_id)
-        session_logger.info(f"DEBUG: Session stats for player {player_name}: {session_stats}")
-        
-        if session_stats:
-            session_logger.info(f"DEBUG: Session stats exist, setting returning_player=True, keys: {list(session_stats.keys())}")
-            template_vars.update({
-                'returning_player': True,
-                'last_played_time': session_stats.get('last_updated', 'Unknown'),
-                'best_score': session_stats.get('best_score', 0),
-                'total_battles': session_stats.get('combat_encounters', 0),
-                'treasures_found': session_stats.get('treasures_found', 0)
-            })
-            # Use the welcome_back event type for returning players
-            template_vars['event_type'] = EVENT_TYPES["WELCOME_BACK"]
-            session_logger.info(f"DEBUG: Returning player detected. event_type={template_vars['event_type']}, returning_player={template_vars.get('returning_player')}")
-        else:
-            session_logger.info(f"DEBUG: Session stats was None, explicitly setting returning_player=False")
-            template_vars['returning_player'] = False
-            template_vars['event_type'] = EVENT_TYPES["JOURNEY_CONTINUE"]
-    except Exception as e:
-        session_logger.error(f"Error getting session stats: {e}")
-        template_vars['returning_player'] = False
-        template_vars['event_type'] = EVENT_TYPES["JOURNEY_CONTINUE"]
-        session_logger.debug(f"DEBUG: Error with returning player. event_type={template_vars.get('event_type')}, returning_player={template_vars.get('returning_player')}")
-    
-    session_logger.info(f"DEBUG: Final template vars - returning_player: {template_vars.get('returning_player')}, event_type: {template_vars.get('event_type')}")
-    
-    session_logger.debug(f"Showing game for player {player_name} with stats: {stats}")
-    
-    # Set up template variables
-    template_vars.update({
-        'message': f"Welcome back, {player_name}! Your journey into the unknown continues...\nWhat path will you choose?",
-        'show_choices': True,
-        'show_name_input': False,
-        'player_name': player_name,
-        'player_stats': stats,
-        'previous_stats': state.get('previous_stats', stats.copy()),
-        'victory_type': determine_victory_type(stats)
-    })
-    
-    return template('views/game', **template_vars)
-
-@route('/continue', method=['GET', 'POST'])
-@security_headers
-@validate_request
-@safe_template
-def continue_game():
-    """Handle continuing an existing game."""
-    session_id = get_session_id()
-    session_logger = get_session_logger('game', session_id)
-    
-    session_logger.info(f"DEBUG: Accessing continue_game route with session_id: {session_id}")
-    
-    # Get current game state
-    state = get_game_state()
-    
-    # If no game state is found, redirect to start page
-    if not state or 'player_name' not in state:
-        session_logger.warning(f"No game state found for session {session_id}")
-        response.status = 303
-        response.set_header('Location', '/')
-        return response
-    
-    # If game is over and this is a POST request (from restart button), create new game
-    if request.method == 'POST' and (state.get('game_over') or state.get('stats', {}).get('health', 0) <= 0):
-        player_name = state.get('player_name', 'Adventurer')
-        # Create new game state while keeping the player name
-        state = {
-            'player_name': player_name,
-            'stats': DEFAULT_STATS.copy(),
-            'previous_stats': DEFAULT_STATS.copy(),
-            'game_over': False,
-            'is_new_player': False  # Not a new player since they're restarting
-        }
-        save_game_state(state)
-        session_logger.info(f"Restarted game for player {player_name}")
-        
-        # Set up template variables for the restart
-        template_vars = TEMPLATE_DEFAULTS.copy()
+    if game_state.get('player_name'):
         template_vars.update({
-            'message': f"Welcome back, {player_name}! Your new adventure begins now!\nWhat path will you choose?",
+            'message': f"Welcome back, {game_state['player_name']}!\nYour epic quest continues! What challenges await you today?",
             'show_choices': True,
-            'show_name_input': False,
-            'player_name': player_name,
-            'player_stats': state['stats'],
-            'previous_stats': state['previous_stats'],
-            'event_type': EVENT_TYPES["JOURNEY_BEGIN"],
-            'returning_player': False
+            'player_stats': game_state.get('stats'),
+            'player_name': game_state['player_name']
         })
-        return template('views/game', **template_vars)
-    
-    # Check if game is over (for GET requests or if not restarting)
-    if state.get('game_over') or (state.get('stats', {}).get('health', 0) <= 0):
-        session_logger.info(f"Attempted to continue a game over state for session {session_id}")
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        template_vars.update({
-            'message': f"Alas, brave {state.get('player_name', 'Adventurer')}, your previous journey has reached its end!\nWith a score of {state.get('stats', {}).get('score', 0)} and {state.get('stats', {}).get('xp', 0)} XP, your tale is now part of the tavern's legends.\n\nClick 'Start New Adventure' to write a new chapter in your saga!",
-            'show_restart': True,
-            'show_name_input': False,
-            'player_name': state.get('player_name', 'Adventurer'),
-            'player_stats': state.get('stats', DEFAULT_STATS.copy()),
-            'previous_stats': state.get('previous_stats', DEFAULT_STATS.copy()),
-            'event_type': EVENT_TYPES["GAMEOVER"],
-            'returning_player': False  # Explicitly set to False
-        })
-        return template('views/game', **template_vars)
-    
-    # Update last played time
-    try:
-        update_player_last_played(state['player_name'])
-        session_logger.info(f"Updated last played time for player {state['player_name']}")
-    except Exception as e:
-        session_logger.error(f"Error updating last played time: {e}")
-    
-    # Set up template variables for the game page
-    template_vars = TEMPLATE_DEFAULTS.copy()
-    # EXPLICIT: Initialize returning_player as False
-    template_vars['returning_player'] = False
-    
-    # Check if this is a new player's first continuation
-    if state.get('is_new_player', False):
-        # For new players, show the adventure start message
-        template_vars.update({
-            'message': f"{state.get('player_name', 'Adventurer')}, your adventure continues! What path will you choose?",
-            'show_choices': True,
-            'show_name_input': False,
-            'player_name': state.get('player_name', 'Adventurer'),
-            'player_stats': state.get('stats', DEFAULT_STATS.copy()),
-            'previous_stats': state.get('previous_stats', DEFAULT_STATS.copy()),
-            'event_type': EVENT_TYPES["ADVENTURE_START"],
-            'returning_player': False  # Explicitly not a returning player
-        })
-        
-        # Remove the new player flag for subsequent visits
-        state['is_new_player'] = False
-        save_game_state(state)
-        
-        return template('views/game', **template_vars)
-    
-    # For existing players, check if they have previous session stats and it's a GET request
-    if request.method == 'GET':
-        try:
-            session_stats = get_player_session_stats(state['player_name'], session_id)
-            
-            if session_stats:
-                session_logger.info(f"DEBUG: Session stats exist, setting returning_player=True, keys: {list(session_stats.keys())}")
-                template_vars.update({
-                    'returning_player': True,
-                    'last_played_time': session_stats.get('last_updated', 'Unknown'),
-                    'best_score': session_stats.get('best_score', 0),
-                    'total_battles': session_stats.get('combat_encounters', 0),
-                    'treasures_found': session_stats.get('treasures_found', 0)
-                })
-                # Use the welcome_back event type for returning players
-                template_vars['event_type'] = EVENT_TYPES["WELCOME_BACK"]
-                session_logger.info(f"DEBUG: Continue - Returning player detected. event_type={template_vars['event_type']}, returning_player={template_vars.get('returning_player')}")
-            else:
-                session_logger.info(f"DEBUG: Continue - Session stats was None, explicitly setting returning_player=False")
-                template_vars['returning_player'] = False
-                template_vars['event_type'] = EVENT_TYPES["JOURNEY_CONTINUE"]
-        except Exception as e:
-            session_logger.error(f"Error getting session stats: {e}")
-            template_vars['returning_player'] = False
-            template_vars['event_type'] = EVENT_TYPES["JOURNEY_CONTINUE"]
-            session_logger.debug(f"DEBUG: Error with returning player in continue_game. event_type={template_vars.get('event_type')}, returning_player={template_vars.get('returning_player')}, error={str(e)}")
     else:
-        # For POST requests (continuing from welcome back screen), proceed with the game
-        template_vars['returning_player'] = False
-        template_vars['event_type'] = EVENT_TYPES["JOURNEY_CONTINUE"]
-    
-    session_logger.info(f"DEBUG: Final continue_game template vars - returning_player: {template_vars.get('returning_player')}, event_type: {template_vars.get('event_type')}")
-    
-    # Set up template variables
-    template_vars.update({
-        'message': f"Welcome back, {state.get('player_name', 'Adventurer')}! Your journey into the unknown continues...\nWhat path will you choose?",
-        'show_choices': True,
-        'show_name_input': False,
-        'player_name': state.get('player_name', 'Adventurer'),
-        'player_stats': state.get('stats', DEFAULT_STATS.copy()),
-        'previous_stats': state.get('previous_stats', DEFAULT_STATS.copy()),
-        'victory_type': determine_victory_type(state.get('stats', DEFAULT_STATS.copy()))
-    })
-    
-    return template('views/game', **template_vars)
-
-@route('/abandon', method='POST')
-@security_headers
-@validate_request
-def abandon_quest():
-    """Route to abandon the current quest"""
-    # Get player_name from form data
-    player_name = request.forms.get('player_name', '')
-    
-    if not player_name:
-        logger.warning("Abandon request missing player name")
-        response.status = 400
-        return "Player name required"
-    
-    # Get the game state for this session
-    state = get_game_state()
-    
-    # Check if we're abandoning the correct game
-    if not state or state.get('player_name') != player_name:
-        logger.warning(f"Abandon request with mismatched player name: {player_name}")
-        response.status = 400
-        return "Invalid player name"
-    
-    # Clear the game state
-    save_game_state({})
-    
-    # Log the action
-    logger.info(f"Quest abandoned by player: {player_name}")
-    
-    # Redirect to the home page
-    redirect('/')
-
-@route('/start', method=['GET', 'POST'])
-@security_headers
-@validate_request
-@safe_template
-def start_game():
-    """Route to start a new game"""
-    # Initialize session logger
-    session_id = get_session_id()
-    session_logger = get_session_logger('game', session_id)
-    
-    if request.method == 'POST':
-        # Get player name from form data
-        player_name = request.forms.get('player_name', '').strip()
-        username_choice = request.forms.get('username_choice')
-        
-        if username_choice == 'new':
-            player_name = request.forms.get('new_username', '').strip()
-        
-        # Validate player name
-        if not player_name or not template_validate_input(player_name):
-            session_logger.warning(f"Invalid player name attempted: {player_name}")
-            return template('game', 
-                           show_name_input=True,
-                           message="Invalid player name. Please use only letters, numbers, underscores, and hyphens (max 32 characters).")
-        
-        # Create new game state
-        state = {
-            'player_name': player_name,
-            'stats': DEFAULT_STATS.copy(),
-            'previous_stats': DEFAULT_STATS.copy(),
-            'game_over': False,
-            'is_new_player': True  # Add flag to indicate this is a brand new player
-        }
-        
-        # Save the state
-        save_game_state(state)
-        
-        # Verify the state was saved correctly
-        verify_state = get_game_state()
-        if not verify_state or verify_state.get('player_name') != player_name:
-            session_logger.error(f"Failed to save game state for player {player_name}")
-            return template('error', 
-                           error_code=500, 
-                           title="Game Error", 
-                           message="Failed to save your game. Please try again.")
-        
-        # Update last played time
-        update_player_last_played(player_name)
-        
-        # Log new game started
-        session_logger.info(f"New game started for player {player_name}")
-        
-        # Prepare template variables for the first-time experience
-        template_vars = TEMPLATE_DEFAULTS.copy()
         template_vars.update({
-            'message': f"Welcome, {player_name}! Your adventure begins now!\nA world of monsters and treasures awaits...",
-            'show_choices': True,
-            'show_name_input': False,
-            'player_name': player_name,
-            'player_stats': state['stats'],
-            'previous_stats': state['previous_stats'],
-            'event_type': EVENT_TYPES["JOURNEY_BEGIN"],
-            'returning_player': False  # Explicitly mark as not a returning player
-        })
-        
-        # Display the adventure start page directly without redirect
-        return template('views/game', **template_vars)
-    
-    # For GET requests, show the start game form
-    return template('game', 
-                   show_name_input=True,
-                   message="Welcome to Monsters and Treasure! Enter your name to begin your adventure.")
-
-@route('/victory/<victory_type>')
-@security_headers
-@validate_request
-@safe_template
-def victory_page(victory_type):
-    """Display victory page with appropriate type"""
-    session_id = get_session_id()
-    session_logger = get_session_logger('game', session_id)
-    
-    # Get current game state
-    state = get_game_state()
-    
-    # Default template variables
-    template_vars = TEMPLATE_DEFAULTS.copy()
-    
-    # If no game state found, redirect to start
-    if not state or 'stats' not in state:
-        session_logger.warning(f"No game state found for victory page, session {session_id}")
-        template_vars['show_name_input'] = True
-        return template('views/game', **template_vars)
-    
-    # Get player info
-    player_name = state.get('player_name', 'Adventurer')
-    stats = state.get('stats', DEFAULT_STATS.copy())
-    
-    # Validate victory type
-    if victory_type not in VICTORY_TYPES.values():
-        session_logger.warning(f"Invalid victory type requested: {victory_type}")
-        victory_type = VICTORY_TYPES["STANDARD"]
-    
-    session_logger.info(f"Player {player_name} achieved {victory_type}")
-    
-    # Get current stats and event type for this victory
-    template_vars.update({
-        'message': f"{victory_type}!\n{get_victory_message(victory_type, player_name)}\nFinal Stats - Health: {stats['health']} | Score: {stats['score']} | XP: {stats['xp']}\n\nYou can continue playing to improve your score or restart the adventure!",
-        'show_restart': True,
-        'show_choices': True,  # Allow the player to continue the adventure
-        'show_name_input': False,
-        'player_name': player_name,
-        'player_stats': stats,
-        'previous_stats': state.get('previous_stats', stats.copy()),
-        'victory_type': victory_type,
-        'event_type': VICTORY_EVENT_TYPES.get(victory_type, "victory_standard")
-    })
-    
-    # Update leaderboard
-    try:
-        add_to_leaderboard(player_name, stats['score'], stats['xp'], victory_type, stats['health'])
-        update_player_session_stats(player_name, session_id, {"games_played": 1, "victory": 1})
-    except Exception as e:
-        session_logger.error(f"Error updating leaderboard or session stats: {e}")
-    
-    # Don't clear the game state so the player can continue
-    state['victory_achieved'] = True
-    save_game_state(state)
-    
-    return template('views/game', **template_vars)
-
-@route('/game_over')
-@security_headers
-@validate_request
-@safe_template
-def game_over():
-    """Display game over page"""
-    session_id = get_session_id()
-    session_logger = get_session_logger('game', session_id)
-    
-    # Get current game state
-    state = get_game_state()
-    
-    # Default template variables
-    template_vars = TEMPLATE_DEFAULTS.copy()
-    
-    # If no game state found, redirect to start
-    if not state or 'stats' not in state:
-        session_logger.warning(f"No game state found for game over page, session {session_id}")
-        template_vars['show_name_input'] = True
-        return template('views/game', **template_vars)
-    
-    # Get player info
-    player_name = state.get('player_name', 'Adventurer')
-    stats = state.get('stats', DEFAULT_STATS.copy())
-    
-    session_logger.info(f"Game over for player {player_name} with score {stats['score']}")
-    
-    template_vars.update({
-        'message': f"Game Over, {player_name}! Your adventure has come to an end.",
-        'show_restart': True,
-        'player_name': player_name,
-        'player_stats': stats,
-        'previous_stats': state.get('previous_stats', stats.copy()),
-        'event_type': EVENT_TYPES["GAMEOVER"]
-    })
-    
-    # Update session stats
-    try:
-        update_player_session_stats(player_name, session_id, {"games_played": 1, "game_over": 1})
-    except Exception as e:
-        session_logger.error(f"Error updating session stats: {e}")
-    
-    # Clear game state for this session
-    state['game_over'] = True
-    save_game_state(state)
-    
-    return template('views/game', **template_vars)
-
-@route('/choice', method='POST')
-@security_headers
-@validate_request
-@safe_template
-def make_choice():
-    """Process player choice and update game state"""
-    session_id = get_session_id()
-    session_logger = get_session_logger('game', session_id)
-    
-    # Get the current state
-    state = get_game_state()
-    
-    # If no game state is found, redirect to start page
-    if not state or 'stats' not in state:
-        session_logger.warning(f"No game state found for session {session_id}")
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        template_vars['show_name_input'] = True
-        template_vars['message'] = "Your adventure was lost in the mists of time. Please enter your name to start a new journey."
-        response.set_cookie(SESSION_COOKIE_NAME, str(random.randint(1000000, 9999999)), 
-                            path=SESSION_COOKIE_PATH, httponly=SESSION_COOKIE_HTTPONLY, 
-                            secure=SESSION_COOKIE_SECURE)
-        return template('views/game', **template_vars)
-    
-    choice = request.forms.get('choice')
-    
-    if not choice:
-        session_logger.warning("No choice provided")
-        redirect('/')
-
-    player_name = state.get('player_name', 'anonymous')
-    session_logger.info(f"Player {player_name} chose: {choice}")
-    
-    # Get current stats
-    stats = state['stats']
-    
-    # Base template variables
-    template_vars = TEMPLATE_DEFAULTS.copy()
-    template_vars['player_stats'] = stats
-    template_vars['previous_stats'] = state.get('previous_stats', stats.copy())
-    template_vars['player_name'] = player_name
-    template_vars['show_name_input'] = False  # Explicitly set to False to hide the name input
-    template_vars['returning_player'] = False  # Make sure this is set for all templates
-
-    # Process the choice
-    try:
-        if choice == 'rest':
-            if stats['score'] >= 10:
-                health_gain = min(20, 100 - stats['health'])
-                score_cost = min(10, health_gain)
-                stats['health'] += health_gain
-                stats['score'] -= score_cost
-                template_vars.update({
-                    'message': f"You find a cozy spot to rest and recover...\nThe peaceful moment restores {health_gain} health at the cost of {score_cost} score points.\nSometimes the wisest action is to take care of yourself buddy!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["REST"]
-                })
-            else:
-                template_vars.update({
-                    'message': "You search for a place to rest, but alas!\nYou need at least 10 score points to afford a safe resting spot.\nPerhaps some adventure will fill your score points jar?",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["REST_FAILED"]
-                })
-        
-        elif choice == 'adventure':
-            event = random.choice(["treasure", "monster", "trap"])
-            
-            if event == "monster":
-                template_vars.update({
-                    'message': "A wild ugly Monster appears!\nWhat will you do now, brave adventurer? It's fight or flight!",
-                    'show_monster_choices': True,
-                    'event_type': EVENT_TYPES["MONSTER"]
-                })
-            
-            elif event == "treasure":
-                template_vars.update({
-                    'message': "You have learned about a treasure chest from a local in town!\n\nDo you want to maximize your XP and search alone?\nOr get help from a local and earn all the points but less XP (costs 10 scorepoints)?\nOr perhaps play it silly and completely ignore the treasure?",
-                    'show_treasure_choices': True,
-                    'event_type': EVENT_TYPES["TREASURE"]
-                })
-            
-            elif event == "trap":
-                stats['health'] -= 10
-                stats['xp'] += 2
-                template_vars.update({
-                    'message': "Oh no! You've stumbled into a cleverly hidden trap!\nYou lost 10 health but gained 2 XP - you're getting tougher with every mishap!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["TRAP"]
-                })
-
-        elif choice == 'fight':
-            if random.random() > 0.5:
-                stats['score'] += 20
-                stats['xp'] += 20
-                template_vars.update({
-                    'message': "With courage in your heart and steel in your hand, you face the monster head-on...\nVICTORY! The monster falls before your might!\nYou gained 20 score points and a whopping 20 XP for your bravery!",
-                    'show_choices': True,
-                    'event_type': 'combat_victory'
-                })
-            else:
-                stats['health'] -= 20
-                stats['xp'] += 5
-                template_vars.update({
-                    'message': "Despite your bravery, the monster proves too strong!\nYou lost 20 health, but gained 5 XP - every battle makes you stronger!\nPerhaps next time victory will be yours!",
-                    'show_choices': True,
-                    'event_type': 'combat_defeat'
-                })
-
-        elif choice == 'run':
-            template_vars.update({
-                'message': "Using your quick wit and quicker feet, you make a strategic retreat!\nSometimes living to fight another day is the wisest choice.\nNothing ventured and nothing gained, but nothing lost either! As Dr honeysnow used to say.",
-                'show_choices': True,
-                'event_type': 'combat_escape'
-            })
-
-        elif choice == 'search_alone':
-            if random.random() > 0.4:  # 60% chance of success
-                stats['score'] += 25
-                stats['xp'] += 25
-                template_vars.update({
-                    'message': "You found the treasure by yourself! You're amazing bucko!\nYou gained 25 score points and a whopping 25 XP!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["TREASURE_FOUND"]
-                })
-            else:
-                stats['xp'] += 3
-                template_vars.update({
-                    'message': "Despite your valiant efforts, you couldn't find the treasure...\nBut at least you gained 3 XP for trying! Never give up!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["TREASURE_NOT_FOUND"]
-                })
-
-        elif choice == 'get_help':
-            template_vars.update({
-                'event_type': EVENT_TYPES["LOCAL"]
-            })
-            if stats['score'] >= 10:
-                stats['score'] -= 10
-                if random.random() > 0.2:
-                    stats['score'] += 25
-                    stats['xp'] += 10
-                    template_vars.update({
-                        'message': "With the local's help, your willingness to pay, and a little luck, you found the treasure!\nYou gained 25 score points and 10 XP!",
-                        'show_choices': True,
-                        'event_type': EVENT_TYPES["TREASURE_FOUND"]
-                    })
-                else:
-                    template_vars.update({
-                        'message': "Despite the local's help, you couldn't find the treasure...\nDon't you feel silly after paying 10 score points? At least you learned a valuable lesson!",
-                        'show_choices': True,
-                        'event_type': EVENT_TYPES["TREASURE_HELP_FAILED"]
-                    })
-            else:
-                template_vars.update({
-                    'message': "You don't have enough points to get help (need 10 points).\nPerhaps try searching alone or come back when you're score pointsricher!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["LOCAL_UNAVAILABLE"]
-                })
-
-        elif choice == 'ignore':
-            template_vars.update({
-                'message': "You decided to ignore the treasure and move on.\nSometimes the real treasure is the adventures we choose not to undertake!",
-                'show_choices': True,
-                'event_type': EVENT_TYPES["TREASURE_IGNORED"]
-            })
-
-        # Save the updated game state
-        state['stats'] = stats
-        save_game_state(state)
-        
-        # Check for win condition before checking for game over
-        victory_type = determine_victory_type(stats)
-        if victory_type and not state.get('victory_achieved'):
-            # Add to leaderboard when victory is achieved for the first time
-            add_to_leaderboard(
-                player_name=player_name,
-                score=stats['score'],
-                xp=stats['xp'],
-                victory_type=victory_type,
-                health=stats['health']
-            )
-            template_vars.update({
-                'victory_type': victory_type,
-                'event_type': get_event_type(victory_type),
-                'message': f"\n{victory_type}!\n{get_victory_message(victory_type, player_name)}\n"
-                          f"Final Stats - Health: {stats['health']} | Score: {stats['score']} | XP: {stats['xp']}\n\n"
-                          f"You can continue playing to improve your score or restart the adventure!",
-                'show_restart': True,
-                'show_choices': True,  # Allow player to continue playing
-                'player_name': player_name
-            })
-            # Mark that victory has been achieved but don't clear the state
-            state['victory_achieved'] = True
-            save_game_state(state)
-            return template('views/game', **template_vars)
-        # If victory was already achieved, just continue normally
-        elif victory_type and state.get('victory_achieved'):
-            # Just continue with the normal game flow
-            pass
-        
-        # Check for game over
-        if stats['health'] <= 0:
-            template_vars.update({
-                'message': f"Alas, brave {player_name}, your journey has come to an end!\nThough you fell, you achieved a noble score of {stats['score']} and gained {stats['xp']} XP!\nWould you like to embark on another adventure?",
-                'show_restart': True,
-                'show_choices': False,
-                'show_monster_choices': False,
-                'show_treasure_choices': False,
-                'event_type': EVENT_TYPES["GAMEOVER"],
-                'player_name': player_name,
-                'player_stats': stats
-            })
-            # Record the death in leaderboard
-            add_to_leaderboard(
-                player_name=player_name,
-                score=stats['score'],
-                xp=stats['xp'],
-                victory_type="DIED",
-                health=stats['health']
-            )
-            # Mark the state as game over but preserve player name
-            state['game_over'] = True
-            save_game_state(state)
-        
-        return template('views/game', **template_vars)
-
-    except Exception as e:
-        logger.error(f"Error processing choice: {str(e)}")
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        template_vars.update({
-            'message': "Alas! A mysterious force disrupts your adventure!\nThe ancient scrolls speak of such anomalies...\nPlease try again, brave or perhaps recalcitrant adventurer!",
+            'message': "Welcome to the Adventure Game! A world of mystery and excitement awaits!\nDare you enter this stupidly cute realm of monsters and treasures?\nPlease enter your name, brave soul, to begin your journey!",
             'show_name_input': True,
-            'returning_player': False  # Make sure this is set for error cases too
+            'event_type': 'welcome'
         })
     
-    return template('views/game', **template_vars)
+    return template('game', **template_vars)
+
+@route('/start', method='POST')
+def start_game():
+    player_name = request.forms.get('player_name', '').strip()
+    template_vars = TEMPLATE_DEFAULTS.copy()
+    
+    # If no new name provided, check if we have an existing name
+    if not player_name:
+        game_state = get_game_state()
+        player_name = game_state.get('player_name', '').strip()
+    
+    if player_name:
+        logger.debug(f"Starting new game for player: {player_name}")
+        game_state = {
+            'stats': DEFAULT_STATS.copy(),
+            'player_name': player_name
+        }
+        save_game_state(game_state)
+        
+        template_vars.update({
+            'message': f"Hail, {player_name}! Your journey into the unknown begins...\nWhat treasures will you find? What monsters will you face?\nThe path ahead is yours to choose, brave adventurer!",
+            'show_choices': True,
+            'player_name': player_name,
+            'player_stats': game_state['stats'],
+            'event_type': EVENT_TYPES["JOURNEY_BEGIN"]
+        })
+    else:
+        template_vars.update({
+            'message': "Please enter a valid name to begin.",
+            'show_name_input': True
+        })
+    
+    return template('game', **template_vars)
+
+def validate_choice(choice: str) -> bool:
+    """Validate user choice input"""
+    valid_choices = {
+        'fight', 'run',  # Combat choices
+        'search_alone', 'get_help', 'ignore',  # Treasure choices
+        'rest',  # Rest choice
+        'adventure'  # Adventure choice
+    }
+    return choice in valid_choices
+
+def validate_stats(stats: dict) -> bool:
+    """Validate game stats"""
+    required_fields = {'health', 'score', 'xp'}
+    if not all(field in stats for field in required_fields):
+        return False
+    try:
+        return (isinstance(stats['health'], (int, float)) and
+                isinstance(stats['score'], (int, float)) and
+                isinstance(stats['xp'], (int, float)) and
+                0 <= stats['health'] <= 100 and
+                stats['score'] >= 0 and
+                stats['xp'] >= 0)
+    except (KeyError, TypeError, ValueError):
+        return False
+
+@error_boundary
+def handle_choice():
+    """Handle user choice with validation"""
+    choice = request.form.get('choice')
+    if not validate_choice(choice):
+        logger.warning(f"Invalid choice attempted: {choice}")
+        return {'error': 'Invalid choice'}, 400
+        
+    stats = get_game_state().get('stats', {})
+    if not validate_stats(stats):
+        logger.error(f"Invalid stats detected: {stats}")
+        return {'error': 'Invalid game state'}, 400
+
+    # Convert stats to proper types
+    stats = {
+        'health': int(stats.get('health', 0)),
+        'score': int(stats.get('score', 0)),
+        'xp': int(stats.get('xp', 0))
+    }
+    
+    return process_choice(choice, stats)
 
 @route('/static/<filename:path>')
-@security_headers
 def serve_static(filename):
     # Basic security: ensure filename doesn't contain path traversal
     if '..' in filename or filename.startswith('/'):
-        logger.warning(f"Attempted path traversal: {filename}")
         return 'Access denied', 403
         
-    # Validate file extension
-    allowed_extensions = {'.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2'}
-    if not any(filename.lower().endswith(ext) for ext in allowed_extensions):
-        logger.warning(f"Invalid file extension requested: {filename}")
-        return 'Access denied', 403
-    
     # Try the ./static directory first
     response = static_file(filename, root='./static')
     if response.status_code == 404:
@@ -1094,38 +372,13 @@ def serve_static(filename):
     return response
 
 @route('/leaderboard')
-@security_headers
-@validate_request
-@safe_template
 def show_leaderboard():
     leaderboard_entries = get_leaderboard(10)  # Get top 10
     return template('leaderboard', entries=leaderboard_entries)
 
 @route('/health')
 def health_check():
-    # Perform basic health checks
-    health_status = {
-        "status": "ok",
-        "timestamp": datetime.now().isoformat(),
-        "version": "1.0",
-        "db_connection": "ok"
-    }
-    
-    # Check database connection
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        cursor.fetchone()
-        conn.close()
-    except Exception as e:
-        health_status["status"] = "error"
-        health_status["db_connection"] = str(e)
-    
-    # Set appropriate status code
-    response.status = 200 if health_status["status"] == "ok" else 503
-    
-    return health_status
+    return {'status': 'healthy', 'debug': DEBUG}
 
 @route('/favicon.ico')
 def get_favicon():
@@ -1172,11 +425,14 @@ def debug_die():
         victory_type="DIED",
         health=game_state['stats']['health']
     )
-    # Mark the state as game over but preserve player name
-    game_state['game_over'] = True
-    save_game_state(game_state)
+    # Preserve player name and session ID while clearing other state
+    preserved_state = {
+        'player_name': game_states[get_session_id()]['player_name'],
+        'session_id': get_session_id()  # Preserve the session ID
+    }
+    game_states[get_session_id()] = preserved_state
     
-    return template('views/game', **template_vars)
+    return template('game', **template_vars)
 
 @route('/api/stats/regional', method='POST')
 def update_region():
@@ -1221,8 +477,6 @@ def get_region(region_key):
         return {'error': 'Internal server error'}
 
 @route('/api/achievements', method='POST')
-@security_headers
-@validate_request
 def record_achievement():
     """Record a player achievement"""
     try:
@@ -1242,8 +496,6 @@ def record_achievement():
         return {'error': 'Internal server error'}
 
 @route('/api/stats/session', method='POST')
-@security_headers
-@validate_request
 def update_session():
     """Update session statistics"""
     try:
@@ -1260,7 +512,11 @@ def update_session():
         stats_update = {k: v for k, v in data.items() 
                        if k not in ['player_name', 'session_id']}
         
-        update_player_session_stats(player_name=data['player_name'], session_id=data['session_id'], stats_update=stats_update)
+        update_player_session_stats(
+            player_name=data['player_name'],
+            session_id=data['session_id'],
+            stats_update=stats_update
+        )
         return {'status': 'success'}
     except Exception as e:
         logger.error(f"Error updating session stats: {str(e)}")
@@ -1268,8 +524,6 @@ def update_session():
         return {'error': 'Internal server error'}
 
 @route('/api/stats/session/<player_name>/<session_id>', method='GET')
-@security_headers
-@validate_request
 def get_session(player_name, session_id):
     """Get session statistics"""
     try:
@@ -1283,64 +537,98 @@ def get_session(player_name, session_id):
         response.status = 500
         return {'error': 'Internal server error'}
 
-def update_player_last_played(player_name):
-    """Update the last played timestamp for a player."""
+# Debug endpoint for browser tools
+@route('/debug/ws')
+def handle_websocket():
+    wsock = request.environ.get('wsgi.websocket')
+    if not wsock:
+        abort(400, 'Expected WebSocket request.')
+    
     try:
-        with sqlite3.connect('data/game.db') as conn:
-            cursor = conn.cursor()
-            
-            # First check if the player exists
-            cursor.execute('SELECT name FROM players WHERE name = ?', (player_name,))
-            player_exists = cursor.fetchone()
-            
-            if player_exists:
-                # Update existing player's last_played time
-                cursor.execute(
-                    'UPDATE players SET last_played = ? WHERE name = ?',
-                    (datetime.now().isoformat(), player_name)
-                )
-            else:
-                # Create a new player record
-                cursor.execute(
-                    'INSERT INTO players (name, last_played, created_at) VALUES (?, ?, ?)',
-                    (player_name, datetime.now().isoformat(), datetime.now().isoformat())
-                )
-                logger.info(f"Created new player record for {player_name}")
-            
-            conn.commit()
-    except Exception as e:
-        logger.error(f"Error updating last played time for {player_name}: {e}")
+        # Send initial connection success message
+        wsock.send(json.dumps({
+            'type': 'connection',
+            'status': 'connected',
+            'debug': True
+        }))
+        
+        while True:
+            message = wsock.receive()
+            if message:
+                try:
+                    data = json.loads(message)
+                    # Handle different message types
+                    if data.get('type') == 'ping':
+                        wsock.send(json.dumps({
+                            'type': 'pong',
+                            'timestamp': datetime.now().isoformat()
+                        }))
+                    else:
+                        # Echo back debug messages
+                        response = {
+                            'type': 'debug_response',
+                            'data': data,
+                            'timestamp': datetime.now().isoformat()
+                        }
+                        wsock.send(json.dumps(response))
+                except json.JSONDecodeError:
+                    wsock.send(json.dumps({
+                        'type': 'error',
+                        'message': 'Invalid JSON message'
+                    }))
+    except WebSocketError as e:
+        logger.debug(f"WebSocket closed: {str(e)}")
+    finally:
+        if not wsock.closed:
+            wsock.close()
+
+# Enable CORS for debug endpoints
+@route('/debug/<:path>', method=['OPTIONS', 'GET'])
+def enable_cors_for_debug(path=None):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, Connection, Upgrade, Sec-WebSocket-Key, Sec-WebSocket-Version'
+    response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
+    
+    if request.method == 'OPTIONS':
+        return ''
+    return static_file(path, root='./static') if path else ''
 
 # Initialize app with middleware
 app = default_app()
 app.install(log_to_logger)
 
-# Add proper error handler for 404 errors
-@error(404)
-def error404(error):
-    """Handle 404 errors"""
-    logger.warning(f"404 error: {request.url}")
-    response.status = 404
-    return template('error', 
-                   error_code=404, 
-                   title="Page Not Found", 
-                   message="Sorry, the page you're looking for doesn't exist. Perhaps it was just a mirage in your adventure?")
-
-@error(500)
+# Error handling
+@app.error(500)
 def error500(error):
-    """Handle 500 errors"""
-    logger.error(f"500 error: {error}")
-    logger.error(f"Request: {request.url}")
-    
-    response.status = 500
-    return template('error', 
-                   error_code=500, 
-                   title="Server Error", 
-                   message="An unexpected error has occurred. The ancient scrolls speak of such anomalies... Our wizards have been notified!")
+    logger.error(f"Server error: {error}")
+    return template('game', 
+                   message="An error occurred. Please try again.",
+                   show_name_input=True,
+                   **TEMPLATE_DEFAULTS)
+
+@app.error(404)
+def error404(error):
+    logger.error(f"Page not found: {error}")
+    return template('game',
+                   message="Page not found. Please start over.",
+                   show_name_input=True,
+                   **TEMPLATE_DEFAULTS)
 
 if __name__ == "__main__":
     try:
         logger.info("Starting server...")
-        run(host=HOST, port=PORT, debug=DEBUG, reloader=DEBUG)
+        if DEBUG:
+            # Create two servers - one for main app and one for debug
+            main_server = pywsgi.WSGIServer((HOST, PORT), app)
+            debug_port = int(os.environ.get('DEBUG_PORT', 3025))
+            debug_server = pywsgi.WSGIServer((HOST, debug_port), app, handler_class=WebSocketHandler)
+            
+            # Start both servers
+            from gevent import spawn
+            spawn(main_server.serve_forever)
+            debug_server.serve_forever()
+        else:
+            run(host=HOST, port=PORT, debug=DEBUG)
     except Exception as e:
         logger.error(f"Error starting server: {str(e)}")

@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "debug_mode",
+      "description": "Control debug mode with environment variables",
+      "pattern": "DEBUG = os\\.environ\\.get\\('DEBUG', 'False'\\)\\.lower\\(\\) == 'true'",
+      "antiPattern": "DEBUG\\s*=\\s*True",
+      "severity": "error"
+    },
+    {
+      "name": "logging_setup",
+      "description": "Configure logging at startup",
+      "pattern": "logging\\.basicConfig\\(.*format=.*handlers=",
+      "antiPattern": "print\\(",
+      "severity": "error"
+    },
+    {
+      "name": "environment_config",
+      "description": "Use environment variables for configuration",
+      "pattern": "os\\.environ\\.get\\('[A-Z_]+'",
+      "antiPattern": "[A-Z_]+\\s*=\\s*['\"].*['\"]",
+      "severity": "warning"
+    },
+    {
+      "name": "gunicorn_config",
+      "description": "Use Gunicorn configuration file",
+      "pattern": "\\[INFO\\] (Starting|Shutting down|Worker|Handling signal)",
+      "antiPattern": "app\\.run\\(",
+      "severity": "warning"
+    },
+    {
+      "name": "graceful_shutdown",
+      "description": "Handle shutdown signals gracefully",
+      "pattern": "\\[INFO\\] Handling signal: term.*\\[INFO\\] Shutting down",
+      "antiPattern": "sys\\.exit\\(",
+      "severity": "warning"
+    }
+  ]
+} 

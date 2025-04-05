@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "name": "viewport_meta",
+      "description": "Include viewport meta tag",
+      "pattern": "<meta\\s+name=\"viewport\"\\s+content=\"[^\"]*width=device-width",
+      "antiPattern": "<!DOCTYPE html>(?!.*viewport)",
+      "severity": "error"
+    },
+    {
+      "name": "touch_targets",
+      "description": "Ensure touch targets are large enough",
+      "pattern": "class=\"[^\"]*btn[^\"]*\"\\s+style=\"[^\"]*min-(width|height):\\s*44px",
+      "antiPattern": "btn(?!.*min-(width|height):\\s*44px)",
+      "severity": "warning"
+    },
+    {
+      "name": "responsive_images",
+      "description": "Use responsive images",
+      "pattern": "<img[^>]+class=\"[^\"]*game-image[^\"]*\"[^>]+srcset=",
+      "antiPattern": "<img(?!.*srcset)",
+      "severity": "warning"
+    },
+    {
+      "name": "mobile_detection",
+      "description": "Check for mobile user agent",
+      "pattern": "'Sec-Ch-Ua-Mobile':\\s*'\\?[01]'",
+      "antiPattern": "(?<!Sec-Ch-Ua-Mobile).*mobile",
+      "severity": "info"
+    },
+    {
+      "name": "responsive_layout",
+      "description": "Use responsive layout classes",
+      "pattern": "class=\"[^\"]*(?:sm:|md:|lg:)[^\"]*\"",
+      "antiPattern": "class=\"[^\"]*px-[0-9]+",
+      "severity": "warning"
+    }
+  ]
+} 

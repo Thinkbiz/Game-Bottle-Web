@@ -1,37 +1,58 @@
 services:
   web:
-    build: 
-      context: .
-      dockerfile: Dockerfile.prod
-    restart: always
+    build: .
     ports:
-      - "8000:8000"
+      - "8080:8000"  # Changed from 80:8000 to avoid conflicts
+      - "3025:3025"  # Debug port for browser tools
     volumes:
-      - game-data:/app/data
-      - app-logs:/app/logs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./static:/app/static:ro
+      - ./views:/app/views:ro
     environment:
-      - DEVELOPMENT=0
-    user: "root:root"  # Temporarily use root to ensure write permissions
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=true
+      - DEBUG_PORT=3025
+      - PYTHONUNBUFFERED=1
+      - PYTHONOPTIMIZE=2
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    restart: always
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 5s
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-    command: >
-      bash -c "
-        mkdir -p /app/data /app/logs && 
-        chmod -R 777 /app/data /app/logs && 
-        chown -R gameuser:gameuser /app/data /app/logs &&
-        su -s /bin/bash gameuser -c 'gunicorn --config gunicorn.conf.py --bind 0.0.0.0:8000 --worker-class sync --workers 4 --timeout 30 --keep-alive 2 --max-requests 1000 --max-requests-jitter 50 --limit-request-line 4096 --limit-request-fields 100 --limit-request-field_size 8190 --forwarded-allow-ips \"*\" web_game:app'"
+      start_period: 30s
+    networks:
+      - game-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+        mode: "non-blocking"
+        tag: "{{.Name}}"
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    command: gunicorn --config gunicorn.conf.py web_game:app
 
 volumes:
-  game-data:
-    driver: local
-  app-logs:
-    driver: local 
+  game_data:
+  game_logs:
+
+networks:
+  game-network:
+    driver: bridge 
