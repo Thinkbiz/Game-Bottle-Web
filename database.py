@@ -106,6 +106,35 @@ def init_db():
     conn.commit()
     conn.close()
 
+def migrate_db():
+    """Add any missing columns to existing tables without dropping data"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    try:
+        # Check if total_games column exists in regional_stats
+        c.execute("PRAGMA table_info(regional_stats)")
+        columns = [column[1] for column in c.fetchall()]
+        
+        if 'total_games' not in columns:
+            c.execute('''
+                ALTER TABLE regional_stats
+                ADD COLUMN total_games INTEGER DEFAULT 0
+            ''')
+            print("Added total_games column to regional_stats table")
+        
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Database migration error: {e}")
+    finally:
+        conn.close()
+
+# Initialize database
+init_db()
+
+# Run migrations
+migrate_db()
+
 def add_to_leaderboard(player_name: str, score: int, xp: int, victory_type: str, health: int):
     try:
         conn = sqlite3.connect(DB_PATH)
