@@ -311,223 +311,52 @@ def start_game():
     
     return template('game', **template_vars)
 
-@route('/choice', method='POST')
-def make_choice():
+def validate_choice(choice: str) -> bool:
+    """Validate user choice input"""
+    valid_choices = {
+        'fight', 'run',  # Combat choices
+        'search_alone', 'get_help', 'ignore',  # Treasure choices
+        'rest',  # Rest choice
+        'adventure'  # Adventure choice
+    }
+    return choice in valid_choices
+
+def validate_stats(stats: dict) -> bool:
+    """Validate game stats"""
+    required_fields = {'health', 'score', 'xp'}
+    if not all(field in stats for field in required_fields):
+        return False
     try:
-        choice = request.forms.get('choice', '').strip()
-        game_state = get_game_state()
-        
-        logger.debug(f"Processing choice: {choice}")
-        logger.debug(f"Current game state: {game_state}")
-        
-        if not choice:
-            logger.warning("No choice provided")
-            return redirect('/')
-            
-        if 'stats' not in game_state:
-            logger.warning("No game state found")
-            return redirect('/')
-            
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        stats = game_state['stats']
-        previous_stats = game_state.get('previous_stats', stats.copy())
-        player_name = game_state.get('player_name', 'Adventurer')
-        
-        logger.debug(f"Player {player_name} made choice: {choice}")
-        
-        if choice == 'rest':
-            if stats['score'] >= 10:
-                health_gain = min(20, 100 - stats['health'])
-                score_cost = min(10, health_gain)
-                stats['health'] += health_gain
-                stats['score'] -= score_cost
-                template_vars.update({
-                    'message': f"You find a cozy spot to rest and recover...\nThe peaceful moment restores {health_gain} health at the cost of {score_cost} score points.\nSometimes the wisest action is to take care of yourself buddy!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["REST"]
-                })
-            else:
-                template_vars.update({
-                    'message': "You search for a place to rest, but alas!\nYou need at least 10 score points to afford a safe resting spot.\nPerhaps some adventure will fill your score points jar?",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["REST_FAILED"]
-                })
-        
-        elif choice == 'adventure':
-            event = random.choice(["treasure", "monster", "trap"])
-            
-            if event == "monster":
-                template_vars.update({
-                    'message': "A wild ugly Monster appears!\nWhat will you do now, brave adventurer? It's fight or flight!",
-                    'show_monster_choices': True,
-                    'event_type': EVENT_TYPES["MONSTER"]
-                })
-            
-            elif event == "treasure":
-                template_vars.update({
-                    'message': "You have learned about a treasure chest from a local in town!\n\nDo you want to maximize your XP and search alone?\nOr get help from a local and earn all the points but less XP (costs 10 scorepoints)?\nOr perhaps play it silly and completely ignore the treasure?",
-                    'show_treasure_choices': True,
-                    'event_type': EVENT_TYPES["TREASURE"]
-                })
-            
-            elif event == "trap":
-                stats['health'] -= 10
-                stats['xp'] += 2
-                template_vars.update({
-                    'message': "Oh no! You've stumbled into a cleverly hidden trap!\nYou lost 10 health but gained 2 XP - you're getting tougher with every mishap!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["TRAP"]
-                })
+        return (isinstance(stats['health'], (int, float)) and
+                isinstance(stats['score'], (int, float)) and
+                isinstance(stats['xp'], (int, float)) and
+                0 <= stats['health'] <= 100 and
+                stats['score'] >= 0 and
+                stats['xp'] >= 0)
+    except (KeyError, TypeError, ValueError):
+        return False
 
-        elif choice == 'fight':
-            if random.random() > 0.5:
-                stats['score'] += 20
-                stats['xp'] += 20
-                template_vars.update({
-                    'message': "With courage in your heart and steel in your hand, you face the monster head-on...\nVICTORY! The monster falls before your might!\nYou gained 20 score points and a whopping 20 XP for your bravery!",
-                    'show_choices': True,
-                    'event_type': 'combat_victory'
-                })
-            else:
-                stats['health'] -= 20
-                stats['xp'] += 5
-                template_vars.update({
-                    'message': "Despite your bravery, the monster proves too strong!\nYou lost 20 health, but gained 5 XP - every battle makes you stronger!\nPerhaps next time victory will be yours!",
-                    'show_choices': True,
-                    'event_type': 'combat_defeat'
-                })
-
-        elif choice == 'run':
-            template_vars.update({
-                'message': "Using your quick wit and quicker feet, you make a strategic retreat!\nSometimes living to fight another day is the wisest choice.\nNothing ventured and nothing gained, but nothing lost either! As Dr honeysnow used to say.",
-                'show_choices': True,
-                'event_type': 'combat_escape'
-            })
-
-        elif choice == 'search_alone':
-            if random.random() > 0.4:  # 60% chance of success
-                stats['score'] += 25
-                stats['xp'] += 25
-                template_vars.update({
-                    'message': "You found the treasure by yourself! You're amazing bucko!\nYou gained 25 score points and a whopping 25 XP!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["TREASURE_FOUND"]
-                })
-            else:
-                stats['xp'] += 3
-                template_vars.update({
-                    'message': "Despite your valiant efforts, you couldn't find the treasure...\nBut at least you gained 3 XP for trying! Never give up!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["TREASURE_NOT_FOUND"]
-                })
-
-        elif choice == 'get_help':
-            template_vars.update({
-                'event_type': EVENT_TYPES["LOCAL"]
-            })
-            if stats['score'] >= 10:
-                stats['score'] -= 10
-                if random.random() > 0.2:
-                    stats['score'] += 25
-                    stats['xp'] += 10
-                    template_vars.update({
-                        'message': "With the local's help, your willingness to pay, and a little luck, you found the treasure!\nYou gained 25 score points and 10 XP!",
-                        'show_choices': True,
-                        'event_type': EVENT_TYPES["TREASURE_FOUND"]
-                    })
-                else:
-                    template_vars.update({
-                        'message': "Despite the local's help, you couldn't find the treasure...\nDon't you feel silly after paying 10 score points? At least you learned a valuable lesson!",
-                        'show_choices': True,
-                        'event_type': EVENT_TYPES["TREASURE_HELP_FAILED"]
-                    })
-            else:
-                template_vars.update({
-                    'message': "You don't have enough points to get help (need 10 points).\nPerhaps try searching alone or come back when you're score pointsricher!",
-                    'show_choices': True,
-                    'event_type': EVENT_TYPES["LOCAL_UNAVAILABLE"]
-                })
-
-        elif choice == 'ignore':
-            template_vars.update({
-                'message': "You decided to ignore the treasure and move on.\nSometimes the real treasure is the adventures we choose not to undertake!",
-                'show_choices': True,
-                'event_type': EVENT_TYPES["TREASURE_IGNORED"]
-            })
-
-        # Save the updated game state
-        game_state['stats'] = stats
-        save_game_state(game_state)
+@error_boundary
+def handle_choice():
+    """Handle user choice with validation"""
+    choice = request.form.get('choice')
+    if not validate_choice(choice):
+        logger.warning(f"Invalid choice attempted: {choice}")
+        return {'error': 'Invalid choice'}, 400
         
-        # Add stats to template variables
-        template_vars['player_stats'] = stats
-        template_vars['previous_stats'] = previous_stats
-        
-        # Check for win condition before checking for game over
-        victory_type = determine_victory_type(stats)
-        if victory_type:
-            # Add to leaderboard when victory is achieved
-            add_to_leaderboard(
-                player_name=player_name,
-                score=stats['score'],
-                xp=stats['xp'],
-                victory_type=victory_type,
-                health=stats['health']
-            )
-            template_vars.update({
-                'victory_type': victory_type,
-                'event_type': get_event_type(victory_type),
-                'message': f"\n{victory_type}!\n{get_victory_message(victory_type, player_name)}\n"
-                          f"Final Stats - Health: {stats['health']} | Score: {stats['score']} | XP: {stats['xp']}",
-                'show_restart': True,
-                'player_name': player_name
-            })
-            # Preserve player name and session ID while clearing other state
-            preserved_state = {
-                'player_name': game_states[get_session_id()]['player_name'],
-                'session_id': get_session_id()  # Preserve the session ID
-            }
-            game_states[get_session_id()] = preserved_state
-            return template('game', **template_vars)
-        
-        # Check for game over
-        if stats['health'] <= 0:
-            template_vars.update({
-                'message': f"Alas, brave {player_name}, your journey has come to an end!\nThough you fell, you achieved a noble score of {stats['score']} and gained {stats['xp']} XP!\nWould you like to embark on another adventure?",
-                'show_restart': True,
-                'show_choices': False,
-                'show_monster_choices': False,
-                'show_treasure_choices': False,
-                'event_type': EVENT_TYPES["GAMEOVER"],
-                'player_name': player_name,
-                'player_stats': stats
-            })
-            # Record the death in leaderboard
-            add_to_leaderboard(
-                player_name=player_name,
-                score=stats['score'],
-                xp=stats['xp'],
-                victory_type="DIED",
-                health=stats['health']
-            )
-            # Preserve player name and session ID while clearing other state
-            preserved_state = {
-                'player_name': game_states[get_session_id()]['player_name'],
-                'session_id': get_session_id()  # Preserve the session ID
-            }
-            game_states[get_session_id()] = preserved_state
-        
-        return template('game', **template_vars)
+    stats = get_game_state().get('stats', {})
+    if not validate_stats(stats):
+        logger.error(f"Invalid stats detected: {stats}")
+        return {'error': 'Invalid game state'}, 400
 
-    except Exception as e:
-        logger.error(f"Error processing choice: {str(e)}")
-        template_vars = TEMPLATE_DEFAULTS.copy()
-        template_vars.update({
-            'message': "Alas! A mysterious force disrupts your adventure!\nThe ancient scrolls speak of such anomalies...\nPlease try again, brave or perhaps recalcitrant adventurer!",
-            'show_name_input': True
-        })
+    # Convert stats to proper types
+    stats = {
+        'health': int(stats.get('health', 0)),
+        'score': int(stats.get('score', 0)),
+        'xp': int(stats.get('xp', 0))
+    }
     
-    return template('game', **template_vars)
+    return process_choice(choice, stats)
 
 @route('/static/<filename:path>')
 def serve_static(filename):

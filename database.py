@@ -112,28 +112,71 @@ def migrate_db():
     c = conn.cursor()
     
     try:
-        # Check if total_games column exists in regional_stats
-        c.execute("PRAGMA table_info(regional_stats)")
-        columns = [column[1] for column in c.fetchall()]
-        
-        if 'total_games' not in columns:
+        # Check if regional_stats table exists
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='regional_stats'")
+        if not c.fetchone():
+            # Create regional_stats table if it doesn't exist
             c.execute('''
-                ALTER TABLE regional_stats
-                ADD COLUMN total_games INTEGER DEFAULT 0
+                CREATE TABLE IF NOT EXISTS regional_stats
+                (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 region_key TEXT UNIQUE,
+                 country TEXT,
+                 region TEXT,
+                 total_games INTEGER DEFAULT 0,
+                 total_players INTEGER DEFAULT 0,
+                 combat_style_brave INTEGER DEFAULT 0,
+                 combat_style_cautious INTEGER DEFAULT 0,
+                 combat_style_balanced INTEGER DEFAULT 0,
+                 action_fight INTEGER DEFAULT 0,
+                 action_run INTEGER DEFAULT 0,
+                 action_rest INTEGER DEFAULT 0,
+                 action_search_alone INTEGER DEFAULT 0,
+                 action_get_help INTEGER DEFAULT 0,
+                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
             ''')
-            print("Added total_games column to regional_stats table")
+            print("Created regional_stats table")
+        else:
+            # Check for missing columns
+            c.execute("PRAGMA table_info(regional_stats)")
+            columns = [column[1] for column in c.fetchall()]
+            
+            missing_columns = {
+                'total_games': 'INTEGER DEFAULT 0',
+                'total_players': 'INTEGER DEFAULT 0',
+                'combat_style_brave': 'INTEGER DEFAULT 0',
+                'combat_style_cautious': 'INTEGER DEFAULT 0',
+                'combat_style_balanced': 'INTEGER DEFAULT 0',
+                'action_fight': 'INTEGER DEFAULT 0',
+                'action_run': 'INTEGER DEFAULT 0',
+                'action_rest': 'INTEGER DEFAULT 0',
+                'action_search_alone': 'INTEGER DEFAULT 0',
+                'action_get_help': 'INTEGER DEFAULT 0'
+            }
+            
+            for column, type_def in missing_columns.items():
+                if column not in columns:
+                    try:
+                        c.execute(f'''
+                            ALTER TABLE regional_stats
+                            ADD COLUMN {column} {type_def}
+                        ''')
+                        print(f"Added {column} column to regional_stats table")
+                    except sqlite3.Error as e:
+                        print(f"Error adding column {column}: {e}")
         
         conn.commit()
     except sqlite3.Error as e:
         print(f"Database migration error: {e}")
+        conn.rollback()
     finally:
         conn.close()
 
-# Initialize database
-init_db()
-
-# Run migrations
-migrate_db()
+# Initialize database if it doesn't exist
+if not os.path.exists(DB_PATH):
+    init_db()
+else:
+    # Run migrations on existing database
+    migrate_db()
 
 def add_to_leaderboard(player_name: str, score: int, xp: int, victory_type: str, health: int):
     try:
@@ -239,53 +282,48 @@ def update_user_stats(email: str, score: int, xp: int):
     conn.commit()
     conn.close()
 
-def update_regional_stats(region_key: str, country: str, region: str, player_name: str, 
-                         combat_style: Optional[str] = None, action: Optional[str] = None):
-    """Update regional statistics"""
+def update_regional_stats(region_key: str, country: str, region: str, stats_update: dict):
+    """Update regional statistics with error handling and column validation"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
     try:
-        # First, try to insert a new region if it doesn't exist
+        # First check if the region exists
         c.execute('''
-            INSERT OR IGNORE INTO regional_stats (region_key, country, region)
-            VALUES (?, ?, ?)
+            INSERT OR IGNORE INTO regional_stats 
+            (region_key, country, region, total_games)
+            VALUES (?, ?, ?, 0)
         ''', (region_key, country, region))
         
-        # Update combat style if provided
-        if combat_style:
-            c.execute(f'''
+        # Build update query dynamically based on provided stats
+        valid_columns = [
+            'total_games', 'total_players', 
+            'combat_style_brave', 'combat_style_cautious', 'combat_style_balanced',
+            'action_fight', 'action_run', 'action_rest', 
+            'action_search_alone', 'action_get_help'
+        ]
+        
+        # Filter out invalid columns
+        update_cols = {k: v for k, v in stats_update.items() if k in valid_columns}
+        
+        if update_cols:
+            set_clause = ', '.join([f"{k} = {k} + ?" for k in update_cols.keys()])
+            query = f'''
                 UPDATE regional_stats 
-                SET combat_style_{combat_style} = combat_style_{combat_style} + 1,
+                SET {set_clause},
                     last_updated = CURRENT_TIMESTAMP
                 WHERE region_key = ?
-            ''', (region_key,))
-        
-        # Update action count if provided
-        if action:
-            c.execute(f'''
-                UPDATE regional_stats 
-                SET action_{action} = action_{action} + 1,
-                    last_updated = CURRENT_TIMESTAMP
-                WHERE region_key = ?
-            ''', (region_key,))
-        
-        # Update total games and players
-        c.execute('''
-            UPDATE regional_stats 
-            SET total_games = total_games + 1,
-                total_players = (
-                    SELECT COUNT(DISTINCT player_name) 
-                    FROM leaderboard 
-                    WHERE player_name LIKE ?
-                ),
-                last_updated = CURRENT_TIMESTAMP
-            WHERE region_key = ?
-        ''', (f"%{player_name}%", region_key))
-        
+            '''
+            
+            # Execute update with all parameters
+            c.execute(query, list(update_cols.values()) + [region_key])
+            
         conn.commit()
+        return True
     except sqlite3.Error as e:
         print(f"Database error in update_regional_stats: {e}")
+        conn.rollback()
+        return False
     finally:
         conn.close()
 

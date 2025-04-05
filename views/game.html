@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Monsters and Treasure</title>
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-69G95PRCQQ"></script>
@@ -363,7 +364,8 @@
         .health-width-100 { width: 100%; }
     </style>
 </head>
-<body>
+<body data-event-type="{{ event_type if event_type else '' }}" 
+      data-victory-type="{{ victory_type if victory_type else '' }}">
     <div class="game-container">
         <header class="game-header">
             <h1 class="game-title">Monsters and Treasure</h1>
@@ -511,123 +513,11 @@
         </footer>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Track page view with enhanced context
-        trackGameEvent('screen_view', {
-            health: '{{player_stats["health"] if player_stats else 0}}',
-            score: '{{player_stats["score"] if player_stats else 0}}',
-            xp: '{{player_stats["xp"] if player_stats else 0}}'
-        });
+    <div id="gameStats" 
+         data-initial-stats='{"health": {{player_stats["health"] if player_stats else 0}}, "score": {{player_stats["score"] if player_stats else 0}}, "xp": {{player_stats["xp"] if player_stats else 0}}}'>
+    </div>
 
-        // Track all button clicks with enhanced context
-        document.querySelectorAll('button[name="choice"]').forEach(button => {
-            button.addEventListener('click', function() {
-                const choice = this.value;
-                const eventParams = {
-                    choice: choice,
-                    health: '{{player_stats["health"] if player_stats else 0}}',
-                    score: '{{player_stats["score"] if player_stats else 0}}',
-                    xp: '{{player_stats["xp"] if player_stats else 0}}'
-                };
-
-                if (['fight', 'run'].includes(choice)) {
-                    trackGameEvent('combat_choice', eventParams);
-                } else if (['search_alone', 'get_help', 'ignore'].includes(choice)) {
-                    trackGameEvent('treasure_choice', eventParams);
-                } else if (choice === 'rest') {
-                    trackGameEvent('rest_choice', eventParams);
-                } else if (choice === 'adventure') {
-                    trackGameEvent('adventure_choice', eventParams);
-                }
-            });
-        });
-
-        // Track game over and victory events
-        % if event_type == 'gameover':
-            trackGameEvent('game_over', {
-                final_score: '{{player_stats["score"]}}',
-                final_xp: '{{player_stats["xp"]}}',
-                total_health: '{{player_stats["health"]}}'
-            });
-        % elif victory_type:
-            trackGameEvent('victory', {
-                victory_type: '{{victory_type}}',
-                final_score: '{{player_stats["score"]}}',
-                final_xp: '{{player_stats["xp"]}}',
-                total_health: '{{player_stats["health"]}}'
-            });
-        % end
-
-        // Add animation for game images
-        function showGameImages() {
-            const images = document.querySelectorAll('.game-image');
-            images.forEach(img => {
-                // Wait for image to load
-                if (img.complete) {
-                    setTimeout(() => img.classList.add('show'), 100);
-                } else {
-                    img.onload = () => setTimeout(() => img.classList.add('show'), 100);
-                }
-            });
-        }
-
-        // Run image animations
-        showGameImages();
-
-        function updateProgressBars() {
-            const bars = document.querySelectorAll('.progress-bar');
-            
-            bars.forEach(bar => {
-                const currentValue = parseFloat(bar.getAttribute('data-value'));
-                const previousValue = parseFloat(bar.getAttribute('data-previous'));
-                
-                if (currentValue !== previousValue) {
-                    // Remove existing classes first
-                    bar.classList.remove('increase', 'decrease');
-                    
-                    // Force a reflow
-                    void bar.offsetWidth;
-                    
-                    // Add appropriate class based on value change
-                    if (currentValue > previousValue) {
-                        bar.classList.add('increase');
-                    } else if (currentValue < previousValue) {
-                        bar.classList.add('decrease');
-                    }
-                    
-                    // Schedule removal of animation classes
-                    setTimeout(() => {
-                        bar.classList.remove('increase', 'decrease');
-                    }, 1000);
-                }
-            });
-        }
-
-        // Run animation check immediately after page load
-        updateProgressBars();
-        
-        // Also run when the page content updates
-        const observer = new MutationObserver(updateProgressBars);
-        observer.observe(document.body, { 
-            childList: true, 
-            subtree: true 
-        });
-
-        // Function to update progress bar widths
-        function updateProgressWidth(bar, value, max) {
-            // Remove all width classes
-            bar.classList.forEach(className => {
-                if (className.startsWith('health-width-')) {
-                    bar.classList.remove(className);
-                }
-            });
-            
-            // Calculate percentage and round to nearest 10
-            const percentage = Math.round((value / max) * 10) * 10;
-            bar.classList.add(`health-width-${percentage}`);
-        }
-    });
-    </script>
+    <!-- Include external JavaScript file -->
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
 </body>
 </html> 
