@@ -2,7 +2,8 @@ services:
   web:
     build: .
     ports:
-      - "8000:8000"
+      - "80:8000"  # Main application port
+      - "3025:3025"  # Debug port for browser tools
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -14,6 +15,7 @@ services:
       - DEBUG=True
       - PYTHONUNBUFFERED=1
       - PYTHONOPTIMIZE=2
+      - DEBUG_PORT=3025
     deploy:
       resources:
         limits:

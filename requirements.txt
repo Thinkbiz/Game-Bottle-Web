@@ -1,6 +1,7 @@
-bottle==0.13.2
+bottle==0.12.25
 google-auth==2.23.0
 google-auth-oauthlib==1.1.0
 requests==2.31.0
 gunicorn==21.2.0  # Production-grade WSGI server
-gevent==24.2.1 
+gevent==24.2.1
+gevent-websocket==0.10.1 

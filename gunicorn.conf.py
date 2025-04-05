@@ -1,23 +1,24 @@
 import multiprocessing
+import os
 
 # Server socket
-bind = "0.0.0.0:8000"
+bind = f"0.0.0.0:{os.environ.get('PORT', '8000')}"
 backlog = 2048
 
 # Worker processes - optimized for single CPU
-workers = 2  # 2-3 per core, we have 1 core
-worker_class = "gevent"
+workers = multiprocessing.cpu_count() * 2 + 1
+worker_class = 'geventwebsocket.gunicorn.workers.GeventWebSocketWorker'
 worker_connections = 1000
 threads = 4  # More threads since we're using fewer workers
 max_requests = 1000
 max_requests_jitter = 50
-timeout = 30
-keepalive = 5
+timeout = 120
+keepalive = 2
 
 # Logging
-errorlog = "/app/logs/gunicorn-error.log"
-accesslog = "/app/logs/gunicorn-access.log"
-loglevel = "info"
+errorlog = "./logs/error.log"
+accesslog = "./logs/access.log"
+loglevel = "debug" if os.environ.get('DEBUG') == 'true' else "info"
 access_log_format = '%({x-forwarded-for}i)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
 capture_output = True
 
@@ -35,6 +36,14 @@ tmp_upload_dir = None
 # SSL
 keyfile = None
 certfile = None
+
+# Security
+limit_request_line = 4094
+limit_request_fields = 100
+limit_request_field_size = 8190
+
+# Debug settings
+reload = os.environ.get('DEBUG') == 'true'
 
 # Server hooks
 def on_starting(server):

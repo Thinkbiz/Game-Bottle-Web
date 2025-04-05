@@ -11,6 +11,9 @@ import logging
 import sys
 from typing import Dict, Any, Optional, Union, Tuple
 from config import DEVELOPMENT_CONFIG
+from gevent import pywsgi
+from geventwebsocket import WebSocketError
+from geventwebsocket.handler import WebSocketHandler
 
 # Game Constants
 VICTORY_TYPES = {
@@ -705,6 +708,30 @@ def get_session(player_name, session_id):
         response.status = 500
         return {'error': 'Internal server error'}
 
+# Debug endpoint for browser tools
+@route('/debug/ws')
+def handle_websocket():
+    wsock = request.environ.get('wsgi.websocket')
+    if not wsock:
+        abort(400, 'Expected WebSocket request.')
+    
+    try:
+        while True:
+            message = wsock.receive()
+            if message:
+                # Handle debug messages
+                response = {'type': 'debug_response', 'data': message}
+                wsock.send(json.dumps(response))
+    except WebSocketError:
+        logger.debug("WebSocket closed")
+
+# Enable CORS for debug endpoints
+@route('/debug/<:path>', method=['OPTIONS'])
+def enable_cors_for_debug():
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With'
+
 # Initialize app with middleware
 app = default_app()
 app.install(log_to_logger)
@@ -729,6 +756,10 @@ def error404(error):
 if __name__ == "__main__":
     try:
         logger.info("Starting server...")
-        run(host=HOST, port=PORT, debug=DEBUG, reloader=DEBUG)
+        if DEBUG:
+            server = pywsgi.WSGIServer((HOST, PORT), app, handler_class=WebSocketHandler)
+            server.serve_forever()
+        else:
+            run(host=HOST, port=PORT, debug=DEBUG)
     except Exception as e:
         logger.error(f"Error starting server: {str(e)}")
