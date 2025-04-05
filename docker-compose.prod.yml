@@ -2,7 +2,7 @@ services:
   web:
     build: .
     ports:
-      - "80:8000"  # Main application port
+      - "8080:8000"  # Changed from 80:8000 to avoid conflicts
       - "3025:3025"  # Debug port for browser tools
     volumes:
       - ./data:/app/data
@@ -12,10 +12,10 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8000
-      - DEBUG=True
+      - DEBUG=true
+      - DEBUG_PORT=3025
       - PYTHONUNBUFFERED=1
       - PYTHONOPTIMIZE=2
-      - DEBUG_PORT=3025
     deploy:
       resources:
         limits:

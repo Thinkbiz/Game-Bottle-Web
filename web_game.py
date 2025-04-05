@@ -757,8 +757,15 @@ if __name__ == "__main__":
     try:
         logger.info("Starting server...")
         if DEBUG:
-            server = pywsgi.WSGIServer((HOST, PORT), app, handler_class=WebSocketHandler)
-            server.serve_forever()
+            # Create two servers - one for main app and one for debug
+            main_server = pywsgi.WSGIServer((HOST, PORT), app)
+            debug_port = int(os.environ.get('DEBUG_PORT', 3025))
+            debug_server = pywsgi.WSGIServer((HOST, debug_port), app, handler_class=WebSocketHandler)
+            
+            # Start both servers
+            from gevent import spawn
+            spawn(main_server.serve_forever)
+            debug_server.serve_forever()
         else:
             run(host=HOST, port=PORT, debug=DEBUG)
     except Exception as e:
