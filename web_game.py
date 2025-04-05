@@ -1,4 +1,4 @@
-from bottle import route, run, template, static_file, request, redirect, response, default_app
+from bottle import route, run, template, static_file, request, redirect, response, default_app, abort
 import random
 from database import (init_db, add_to_leaderboard, get_leaderboard, 
                      update_regional_stats, get_regional_stats,
@@ -716,21 +716,54 @@ def handle_websocket():
         abort(400, 'Expected WebSocket request.')
     
     try:
+        # Send initial connection success message
+        wsock.send(json.dumps({
+            'type': 'connection',
+            'status': 'connected',
+            'debug': True
+        }))
+        
         while True:
             message = wsock.receive()
             if message:
-                # Handle debug messages
-                response = {'type': 'debug_response', 'data': message}
-                wsock.send(json.dumps(response))
-    except WebSocketError:
-        logger.debug("WebSocket closed")
+                try:
+                    data = json.loads(message)
+                    # Handle different message types
+                    if data.get('type') == 'ping':
+                        wsock.send(json.dumps({
+                            'type': 'pong',
+                            'timestamp': datetime.now().isoformat()
+                        }))
+                    else:
+                        # Echo back debug messages
+                        response = {
+                            'type': 'debug_response',
+                            'data': data,
+                            'timestamp': datetime.now().isoformat()
+                        }
+                        wsock.send(json.dumps(response))
+                except json.JSONDecodeError:
+                    wsock.send(json.dumps({
+                        'type': 'error',
+                        'message': 'Invalid JSON message'
+                    }))
+    except WebSocketError as e:
+        logger.debug(f"WebSocket closed: {str(e)}")
+    finally:
+        if not wsock.closed:
+            wsock.close()
 
 # Enable CORS for debug endpoints
-@route('/debug/<:path>', method=['OPTIONS'])
-def enable_cors_for_debug():
+@route('/debug/<:path>', method=['OPTIONS', 'GET'])
+def enable_cors_for_debug(path=None):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With'
+    response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, Connection, Upgrade, Sec-WebSocket-Key, Sec-WebSocket-Version'
+    response.headers['Access-Control-Max-Age'] = '86400'  # 24 hours
+    
+    if request.method == 'OPTIONS':
+        return ''
+    return static_file(path, root='./static') if path else ''
 
 # Initialize app with middleware
 app = default_app()
