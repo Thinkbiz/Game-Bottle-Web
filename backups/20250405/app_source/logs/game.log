@@ -1,0 +1,123 @@
+2025-02-27 17:58:18,442 - game - DEBUG - No active game found, showing name input
+2025-02-27 17:58:25,301 - game - INFO - Starting new game for player: getting smarter
+2025-02-27 17:58:25,305 - game - ERROR - Error updating session stats: 'str' object has no attribute 'items'
+2025-02-27 18:03:36,143 - game - DEBUG - No active game found, showing name input
+2025-02-27 18:04:07,657 - game - INFO - Starting new game for player: container2 try 5
+2025-02-27 18:06:37,451 - game - DEBUG - No active game found, showing name input
+2025-02-27 18:06:43,607 - game - INFO - Starting new game for player: container2 try 6
+2025-02-27 18:09:06,823 - game - DEBUG - No active game found, showing name input
+2025-02-27 18:09:16,435 - game - INFO - Starting new game for player: container2 test 7
+2025-02-27 18:09:16,448 - game - DEBUG - Showing game for player container2 test 7 with stats: {'health': 100, 'score': 0, 'xp': 0}
+2025-02-27 18:27:18,349 - game - DEBUG - Showing game for player container2 test 7 with stats: {'health': 100, 'score': 0, 'xp': 0}
+2025-02-27 18:27:29,392 - game - INFO - Starting new game for player: containerization 2 test 8
+2025-02-27 18:29:49,172 - game - DEBUG - Showing game for player containerization 2 test 8 with stats: {'health': 100, 'score': 0, 'xp': 0}
+2025-02-27 18:29:58,180 - game - INFO - Starting new game for player: containerization2 test 9
+2025-02-27 18:33:18,607 - game - DEBUG - Showing game for player containerization2 test 9 with stats: {'health': 100, 'score': 0, 'xp': 0}
+2025-02-27 18:33:39,562 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:33:44,931 - game - INFO - Player containerization2 test 9 chose: search_alone
+2025-02-27 18:33:45,953 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:33:47,125 - game - INFO - Player containerization2 test 9 chose: search_alone
+2025-02-27 18:33:48,453 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:33:49,482 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:33:50,440 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:33:51,754 - game - INFO - Player containerization2 test 9 chose: fight
+2025-02-27 18:33:53,914 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:33:55,565 - game - INFO - Player containerization2 test 9 chose: fight
+2025-02-27 18:33:56,521 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:33:58,203 - game - INFO - Player containerization2 test 9 chose: run
+2025-02-27 18:33:59,394 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:00,340 - game - INFO - Player containerization2 test 9 chose: rest
+2025-02-27 18:34:01,919 - game - INFO - Player containerization2 test 9 chose: rest
+2025-02-27 18:34:04,150 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:05,142 - game - INFO - Player containerization2 test 9 chose: fight
+2025-02-27 18:34:07,211 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:10,867 - game - INFO - Player containerization2 test 9 chose: search_alone
+2025-02-27 18:34:13,387 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:14,362 - game - INFO - Player containerization2 test 9 chose: fight
+2025-02-27 18:34:16,118 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:17,671 - game - INFO - Player containerization2 test 9 chose: search_alone
+2025-02-27 18:34:19,402 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:20,868 - game - INFO - Player containerization2 test 9 chose: search_alone
+2025-02-27 18:34:22,110 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:23,360 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:24,174 - game - INFO - Player containerization2 test 9 chose: fight
+2025-02-27 18:34:25,275 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:26,078 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:27,321 - game - INFO - Player containerization2 test 9 chose: fight
+2025-02-27 18:34:31,077 - game - INFO - Player containerization2 test 9 chose: rest
+2025-02-27 18:34:32,484 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-02-27 18:34:34,102 - game - INFO - Player containerization2 test 9 chose: fight
+2025-02-27 18:34:38,891 - game - INFO - Player containerization2 test 9 chose: adventure
+2025-06-01 21:55:35,782 - game - DEBUG - No active game found, showing name input
+2025-06-01 22:02:37,990 - game - DEBUG - No active game found, showing name input
+2025-06-01 23:25:53,740 - game - DEBUG - No active game found, showing name input
+2025-06-01 23:29:59,593 - game - DEBUG - No active game found, showing name input
+2025-06-02 00:13:47,502 - game - DEBUG - No active game found, showing name input
+2025-06-02 00:30:48,234 - game - DEBUG - No active game found, showing name input
+2025-06-02 01:29:40,191 - game - DEBUG - No active game found, showing name input
+2025-06-02 02:29:25,685 - game - DEBUG - No active game found, showing name input
+2025-06-02 05:30:16,109 - game - DEBUG - No active game found, showing name input
+2025-06-02 05:35:40,808 - game - DEBUG - No active game found, showing name input
+2025-06-02 07:09:28,528 - game - DEBUG - No active game found, showing name input
+2025-06-02 07:18:19,365 - game - DEBUG - No active game found, showing name input
+2025-06-02 08:34:33,242 - game - DEBUG - No active game found, showing name input
+2025-06-02 09:42:23,410 - game - DEBUG - No active game found, showing name input
+2025-06-02 10:14:44,365 - game - DEBUG - No active game found, showing name input
+2025-06-02 11:19:04,326 - game - DEBUG - No active game found, showing name input
+2025-06-02 11:19:04,385 - game - DEBUG - No active game found, showing name input
+2025-06-02 14:50:56,284 - game - DEBUG - No active game found, showing name input
+2025-06-02 14:51:12,867 - game - DEBUG - No active game found, showing name input
+2025-06-02 14:51:13,716 - game - DEBUG - No active game found, showing name input
+2025-06-02 15:09:36,826 - game - DEBUG - No active game found, showing name input
+2025-06-02 16:23:25,150 - game - DEBUG - No active game found, showing name input
+2025-06-02 16:30:28,521 - game - DEBUG - No active game found, showing name input
+2025-06-02 17:34:04,681 - game - DEBUG - No active game found, showing name input
+2025-06-02 18:29:45,226 - game - INFO - Starting new game for player: dannyo
+2025-06-02 18:29:47,065 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:29:50,126 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:29:50,950 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:29:51,650 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:29:52,375 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:29:53,119 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:29:53,809 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:29:54,490 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:29:55,213 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:29:56,015 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:29:57,154 - game - INFO - Player dannyo chose: fight
+2025-06-02 18:29:58,233 - game - INFO - Player dannyo chose: rest
+2025-06-02 18:30:00,483 - game - INFO - Player dannyo chose: rest
+2025-06-02 18:30:01,487 - game - INFO - Player dannyo chose: rest
+2025-06-02 18:30:03,702 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:06,039 - game - INFO - Player dannyo chose: fight
+2025-06-02 18:30:12,664 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:15,050 - game - INFO - Player dannyo chose: fight
+2025-06-02 18:30:18,504 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:19,988 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:30:22,141 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:24,039 - game - INFO - Player dannyo chose: fight
+2025-06-02 18:30:32,452 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:34,566 - game - INFO - Player dannyo chose: get_help
+2025-06-02 18:30:36,981 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:39,635 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:30:41,340 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:43,728 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:30:47,640 - game - INFO - Player dannyo chose: rest
+2025-06-02 18:30:48,868 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:51,315 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:30:52,532 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:53,746 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:30:55,610 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:31:03,801 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:31:05,320 - game - INFO - Player dannyo chose: fight
+2025-06-02 18:31:06,617 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:31:07,348 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:31:08,487 - game - INFO - Player dannyo chose: search_alone
+2025-06-02 18:31:09,067 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:31:09,492 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:31:09,956 - game - INFO - Player dannyo chose: fight
+2025-06-02 18:31:10,494 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:31:11,122 - game - INFO - Player dannyo chose: adventure
+2025-06-02 18:31:11,985 - game - INFO - Player dannyo chose: adventure
+2025-06-02 19:23:55,353 - game - DEBUG - No active game found, showing name input
+2025-06-02 19:31:17,780 - game - DEBUG - No active game found, showing name input
+2025-06-02 19:33:09,093 - game - DEBUG - No active game found, showing name input

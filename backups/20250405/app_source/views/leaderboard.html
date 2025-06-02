@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure - Leaderboard</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Leaderboard</h1>
+            <p class="text-gray-600">Top adventurers and their achievements</p>
+        </header>
+
+        <main class="space-y-8">
+            <!-- Victory Types Legend -->
+            <section class="card">
+                <h2 class="text-2xl font-display font-bold mb-4">Victory Types</h2>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div class="p-4 bg-gradient-to-r from-accent-orange to-light-orange rounded-xl text-white">
+                        <h3 class="font-bold mb-1">Perfect Victory</h3>
+                        <p class="text-sm opacity-90">Health > 80, Score > 50, XP ≥ 200</p>
+                    </div>
+                    <div class="p-4 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-xl text-white">
+                        <h3 class="font-bold mb-1">Glorious Victory</h3>
+                        <p class="text-sm opacity-90">Health > 50, XP ≥ 200</p>
+                    </div>
+                    <div class="p-4 bg-gradient-to-r from-amber-500 to-amber-400 rounded-xl text-white">
+                        <h3 class="font-bold mb-1">Pyrrhic Victory</h3>
+                        <p class="text-sm opacity-90">Health ≤ 20, XP ≥ 200</p>
+                    </div>
+                    <div class="p-4 bg-gradient-to-r from-blue-500 to-blue-400 rounded-xl text-white">
+                        <h3 class="font-bold mb-1">Standard Victory</h3>
+                        <p class="text-sm opacity-90">XP ≥ 200</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Leaderboard Table -->
+            <section class="card overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="px-4 py-3 text-left">Rank</th>
+                            <th class="px-4 py-3 text-left">Player</th>
+                            <th class="px-4 py-3 text-left">Score</th>
+                            <th class="px-4 py-3 text-left">XP</th>
+                            <th class="px-4 py-3 text-left">Health</th>
+                            <th class="px-4 py-3 text-left">Outcome</th>
+                            <th class="px-4 py-3 text-left">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        % for i, entry in enumerate(entries, 1):
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="px-4 py-3">{{i}}</td>
+                            <td class="px-4 py-3 font-medium">{{entry.player_name}}</td>
+                            <td class="px-4 py-3">{{entry.score}}</td>
+                            <td class="px-4 py-3">{{entry.xp}}</td>
+                            <td class="px-4 py-3">{{entry.health}}</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-block px-2 py-1 rounded-full text-sm
+                                    % if entry.victory_type == 'Perfect Victory':
+                                    bg-gradient-to-r from-accent-orange to-light-orange text-white
+                                    % elif entry.victory_type == 'Glorious Victory':
+                                    bg-gradient-to-r from-emerald-500 to-emerald-400 text-white
+                                    % elif entry.victory_type == 'Pyrrhic Victory':
+                                    bg-gradient-to-r from-amber-500 to-amber-400 text-white
+                                    % elif entry.victory_type == 'Standard Victory':
+                                    bg-gradient-to-r from-blue-500 to-blue-400 text-white
+                                    % else:
+                                    bg-gray-200 text-gray-700
+                                    % end
+                                ">
+                                    {{entry.victory_type}}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-600">{{entry.date.strftime('%Y-%m-%d %H:%M')}}</td>
+                        </tr>
+                        % end
+                    </tbody>
+                </table>
+            </section>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/" class="btn-primary">Back to Game</a>
+        </footer>
+    </div>
+</body>
+</html> 
