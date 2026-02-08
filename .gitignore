@@ -2,17 +2,70 @@
 __pycache__/
 *.py[cod]
 *$py.class
-.env
-.venv
-venv/
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Database
-game.db
+# Virtual Environment
+venv/
+ENV/
 
 # IDE
-.vscode/
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/*
+!logs/.gitkeep
+*.log
+
+# Database
+*.db
+data/*
+!data/.gitkeep
+*.sqlite3
+
+# System
+.DS_Store
+.env
+.env.local
+.env.*.local
+
+# VPS Specific
+/etc/nginx/sites-enabled/*
+/etc/letsencrypt/
+ssl-certificates/
+.ssh/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Keep infrastructure documentation
+!infrastructure/*/
+!infrastructure/**/README.md *.tar
+
+# Backup files
+backup/
+*.bak
+*.backup
+static/images/backup/
 
 # System files
-.DS_Store
-Thumbs.db 
+Thumbs.db

@@ -1,0 +1,138 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            set -x  # Enable debug mode
+            
+            echo "=== BACKUP USER DATA ==="
+            cd /opt/docker-game
+            if [ -d "data" ] || [ -d "logs" ]; then
+              mkdir -p /tmp/backup
+              [ -d "data" ] && cp -r data /tmp/backup/
+              [ -d "logs" ] && cp -r logs /tmp/backup/
+              echo "Backup created successfully"
+            else
+              echo "No existing data to backup"
+            fi
+            
+            echo "=== COMPLETE DOCKER RESET ==="
+            # Stop all containers
+            docker-compose -f docker-compose.prod.yml down --volumes --remove-orphans || true
+            docker rm -f $(docker ps -aq) || true
+            
+            # Remove all Docker artifacts
+            docker system prune -af --volumes
+            
+            echo "=== UNINSTALL DOCKER ==="
+            systemctl stop docker.service docker.socket || true
+            apt-get purge -y docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras
+            rm -rf /var/lib/docker /etc/docker
+            rm -rf /var/run/docker.sock
+            
+            echo "=== INSTALL LATEST DOCKER ==="
+            # Add Docker's official GPG key
+            apt-get update
+            apt-get install -y ca-certificates curl gnupg
+            install -m 0755 -d /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            chmod a+r /etc/apt/keyrings/docker.gpg
+            
+            # Add the repository to Apt sources
+            echo \
+              "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+              "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+              tee /etc/apt/sources.list.d/docker.list > /dev/null
+            
+            # Install Docker
+            apt-get update
+            apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            
+            echo "=== VERIFY DOCKER INSTALLATION ==="
+            docker --version
+            docker compose version
+            systemctl status docker
+            
+            echo "=== RESTORE APPLICATION ==="
+            cd /opt/docker-game
+            
+            # Clean and recreate directories
+            rm -rf data logs static views
+            mkdir -p data logs static views
+            
+            # Restore user data if backup exists
+            if [ -d "/tmp/backup" ]; then
+              [ -d "/tmp/backup/data" ] && cp -r /tmp/backup/data/* data/ || true
+              [ -d "/tmp/backup/logs" ] && cp -r /tmp/backup/logs/* logs/ || true
+              rm -rf /tmp/backup
+              echo "Data restored successfully"
+            else
+              echo "No backup to restore"
+            fi
+            
+            # Set proper permissions
+            chown -R root:root data logs static views
+            chmod -R 755 static views
+            chmod -R 777 data logs
+            
+            echo "=== UPDATING CODE ==="
+            git fetch origin main || {
+              echo "Failed to fetch from git"
+              exit 1
+            }
+            git reset --hard origin/main || {
+              echo "Failed to reset to main"
+              exit 1
+            }
+            
+            echo "=== DOCKER BUILD ==="
+            docker compose -f docker-compose.prod.yml build --no-cache 2>&1
+            BUILD_STATUS=$?
+            if [ $BUILD_STATUS -ne 0 ]; then
+              echo "Docker build failed with status $BUILD_STATUS"
+              docker compose -f docker-compose.prod.yml logs
+              exit 1
+            fi
+            
+            echo "=== STARTING CONTAINER ==="
+            docker compose -f docker-compose.prod.yml up -d 2>&1
+            START_STATUS=$?
+            if [ $START_STATUS -ne 0 ]; then
+              echo "Docker start failed with status $START_STATUS"
+              docker compose -f docker-compose.prod.yml logs
+              exit 1
+            fi
+            
+            echo "=== WAITING FOR STARTUP ==="
+            sleep 10
+            
+            echo "=== CONTAINER STATUS ==="
+            docker ps -a
+            docker compose -f docker-compose.prod.yml ps
+            
+            echo "=== CONTAINER LOGS ==="
+            docker compose -f docker-compose.prod.yml logs --tail=100
+            
+            echo "=== CHECKING NGINX ==="
+            systemctl status nginx || echo "Nginx status check failed"
+            
+            echo "=== CHECKING APPLICATION ==="
+            curl -v http://localhost:8000/health || echo "Health check failed"
+            
+            echo "=== DEPLOYMENT COMPLETE ===" 

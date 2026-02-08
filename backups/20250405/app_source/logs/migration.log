@@ -1,0 +1,9 @@
+2025-02-27 17:54:09,866 - migration - INFO - Starting migration from in-memory to database storage
+2025-02-27 17:54:09,899 - migration - WARNING - No game states found in memory
+2025-02-27 17:54:09,899 - migration - ERROR - Failed to create game states dump, migration aborted
+2025-02-27 17:57:21,960 - migration - INFO - Starting migration from in-memory to database storage
+2025-02-27 17:57:21,988 - migration - WARNING - No game states found in memory
+2025-02-27 17:57:21,989 - migration - ERROR - Failed to create game states dump, migration aborted
+2025-02-27 18:44:14,793 - migration - INFO - Starting migration from in-memory to database storage
+2025-02-27 18:44:14,825 - migration - WARNING - No game states found in memory
+2025-02-27 18:44:14,825 - migration - ERROR - Failed to create game states dump, migration aborted

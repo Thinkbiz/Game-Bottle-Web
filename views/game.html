@@ -1,67 +1,710 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Adventure Game</title>
-    <link rel="stylesheet" type="text/css" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monsters and Treasure</title>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-69G95PRCQQ"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-69G95PRCQQ');
+        
+        // Get detailed location data
+        async function getApproximateLocation() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                return {
+                    country: data.country_name,
+                    region: data.region,
+                    city: data.city,
+                    state: data.region_code,
+                    timezone: data.timezone,
+                    latitude: Math.round(data.latitude), // Round to avoid precise location
+                    longitude: Math.round(data.longitude), // Round to avoid precise location
+                    postal: data.postal ? data.postal.split('')[0] + 'XXX' : null // First digit only for privacy
+                };
+            } catch (error) {
+                console.log('Location fetch failed:', error);
+                return null;
+            }
+        }
+        
+        // Session ID management functions
+        function getOrCreateSessionId() {
+            const existingId = localStorage.getItem('session_id');
+            if (existingId) {
+                return existingId;
+            }
+            
+            const newId = generateUniqueSessionId();
+            localStorage.setItem('session_id', newId);
+            return newId;
+        }
+
+        function generateUniqueSessionId() {
+            try {
+                // Generate cryptographically secure random values
+                const array = new Uint8Array(16);
+                window.crypto.getRandomValues(array);
+                
+                // Convert to hex string with timestamp prefix
+                const timestamp = Date.now().toString(16);
+                const randomHex = Array.from(array)
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('');
+                
+                return `${timestamp}-${randomHex}`;
+            } catch (error) {
+                // Fallback for older browsers (still better than Math.random)
+                const timestamp = Date.now().toString(16);
+                const random = Array.from(
+                    { length: 16 }, 
+                    () => Math.floor(Math.random() * 256)
+                        .toString(16)
+                        .padStart(2, '0')
+                ).join('');
+                
+                return `${timestamp}-${random}`;
+            }
+        }
+        
+        // Enhanced event tracking with detailed location
+        async function trackGameEvent(event_name, event_params = {}) {
+            // Add common parameters
+            const commonParams = {
+                player_name: '{{player_name if player_name else "anonymous"}}',
+                screen_name: '{{event_type if event_type else "welcome"}}',
+                session_id: getOrCreateSessionId()
+            };
+            
+            // Add or update location data every 24 hours
+            const lastLocationUpdate = localStorage.getItem('location_last_updated');
+            const needsLocationUpdate = !lastLocationUpdate || 
+                (Date.now() - parseInt(lastLocationUpdate)) > 24 * 60 * 60 * 1000;
+            
+            if (needsLocationUpdate) {
+                const locationData = await getApproximateLocation();
+                if (locationData) {
+                    // Update regional stats on the server
+                    const regionKey = `${locationData.country}_${locationData.state || locationData.region}`;
+                    try {
+                        await fetch('/api/stats/regional', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                region_key: regionKey,
+                                country: locationData.country,
+                                region: locationData.state || locationData.region,
+                                player_name: commonParams.player_name,
+                                combat_style: event_name === 'combat_choice' ? 
+                                    (event_params.choice === 'fight' ? 'brave' : 
+                                     event_params.choice === 'run' ? 'cautious' : 'balanced') : undefined,
+                                action: event_params.choice
+                            })
+                        });
+                        
+                        // Store minimal location data locally
+                        localStorage.setItem('region_key', regionKey);
+                        localStorage.setItem('location_last_updated', Date.now().toString());
+                    } catch (error) {
+                        console.error('Failed to update regional stats:', error);
+                    }
+                }
+            }
+            
+            // Add location to tracking if available
+            const regionKey = localStorage.getItem('region_key');
+            if (regionKey) {
+                try {
+                    const response = await fetch(`/api/stats/regional/${regionKey}`);
+                    if (response.ok) {
+                        const regionalStats = await response.json();
+                        event_params.regional_insights = {
+                            region_total_games: regionalStats.total_games,
+                            region_player_count: regionalStats.total_players,
+                            region_combat_style: ['brave', 'cautious', 'balanced']
+                                .reduce((a, b) => regionalStats[`combat_style_${a}`] > regionalStats[`combat_style_${b}`] ? a : b),
+                            region_favorite_action: ['fight', 'run', 'rest', 'search_alone', 'get_help']
+                                .reduce((a, b) => regionalStats[`action_${a}`] > regionalStats[`action_${b}`] ? a : b)
+                        };
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch regional stats:', error);
+                }
+            }
+            
+            // Track achievements
+            if (event_name === 'combat_choice' && event_params.choice === 'fight') {
+                try {
+                    await fetch('/api/achievements', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            player_name: commonParams.player_name,
+                            achievement: 'first_blood'
+                        })
+                    });
+                } catch (error) {
+                    console.error('Failed to record achievement:', error);
+                }
+            }
+            
+            if (event_params.health && parseInt(event_params.health) < 10) {
+                try {
+                    await fetch('/api/achievements', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            player_name: commonParams.player_name,
+                            achievement: 'close_call'
+                        })
+                    });
+                } catch (error) {
+                    console.error('Failed to record achievement:', error);
+                }
+            }
+            
+            // Update session stats
+            const sessionUpdate = {};
+            
+            // Track turn count
+            if (['combat_choice', 'treasure_choice', 'rest_choice', 'adventure_choice'].includes(event_name)) {
+                sessionUpdate.turn_count = 1;
+            }
+            
+            // Track combat style
+            if (event_name === 'combat_choice') {
+                sessionUpdate.combat_style = event_params.choice === 'run' ? 'cautious' : 
+                                           event_params.choice === 'fight' ? 'brave' : 'balanced';
+            }
+            
+            // Track treasure hunting success
+            if (event_name === 'treasure_choice') {
+                const treasuresFound = parseInt(localStorage.getItem('treasures_found') || '0');
+                const treasureAttempts = parseInt(localStorage.getItem('treasure_attempts') || '0');
+                
+                if (event_params.choice === 'search_alone' || event_params.choice === 'get_help') {
+                    const newAttempts = treasureAttempts + 1;
+                    localStorage.setItem('treasure_attempts', newAttempts.toString());
+                    funMetrics.treasure_attempts = newAttempts;
+                }
+                
+                funMetrics.treasure_success_rate = treasuresFound / Math.max(1, treasureAttempts);
+                funMetrics.treasures_found = treasuresFound;
+                funMetrics.treasure_attempts = treasureAttempts;
+            }
+            
+            // Track successful treasure finds separately
+            const currentEventType = '{{event_type}}';
+            if (currentEventType === 'treasure_found') {
+                const treasuresFound = parseInt(localStorage.getItem('treasures_found') || '0');
+                const newFound = treasuresFound + 1;
+                localStorage.setItem('treasures_found', newFound.toString());
+                funMetrics.treasures_found = newFound;
+            }
+            
+            // Update game stats
+            if (event_name === 'game_over' || event_name === 'victory') {
+                sessionUpdate.games_played = 1;
+                sessionUpdate.total_score = parseInt(event_params.final_score || 0);
+                sessionUpdate.total_xp = parseInt(event_params.final_xp || 0);
+                sessionUpdate.best_score = parseInt(event_params.final_score || 0);
+                sessionUpdate.best_xp = parseInt(event_params.final_xp || 0);
+            }
+            
+            // Send session update to server
+            if (Object.keys(sessionUpdate).length > 0) {
+                try {
+                    await fetch('/api/stats/session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            player_name: commonParams.player_name,
+                            session_id: commonParams.session_id,
+                            ...sessionUpdate
+                        })
+                    });
+                    
+                    // Get updated session stats
+                    const response = await fetch(`/api/stats/session/${commonParams.player_name}/${commonParams.session_id}`);
+                    if (response.ok) {
+                        const sessionStats = await response.json();
+                        event_params.session_stats = sessionStats;
+                    }
+                } catch (error) {
+                    console.error('Failed to update session stats:', error);
+                }
+            }
+            
+            // Add fun metrics
+            const funMetrics = {
+                turn_count: event_params.session_stats?.turn_count || 0,
+                time_since_start: localStorage.getItem('game_start') ? 
+                    (Date.now() - parseInt(localStorage.getItem('game_start'))) / 1000 : 0
+            };
+            
+            // Merge all parameters
+            const finalParams = { 
+                ...commonParams, 
+                ...event_params, 
+                ...funMetrics 
+            };
+            
+            // Track the event
+            gtag('event', event_name, finalParams);
+            console.log('Tracked event:', event_name, finalParams);
+        }
+        
+        // Initialize game start time and session management
+        if (!localStorage.getItem('game_start')) {
+            localStorage.setItem('game_start', Date.now().toString());
+        }
+    </script>
+    <link rel="icon" type="image/png" href="/static/favicon/favicon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/favicon.png">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .game-stats {
+            display: flex;
+            align-items: stretch;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 1rem 0;
+            width: 100%;
+        }
+
+        .stat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 0.5rem;
+            min-width: 0;
+        }
+
+        .stat-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+            height: 1.5rem;
+        }
+
+        .progress-container {
+            position: relative;
+            width: 100%;
+            height: 8px;
+            margin-top: auto;
+            margin-bottom: 0;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
+        .progress-bar {
+            position: absolute;
+            inset: 0;
+            background: #1e40af;
+            border-radius: 4px;
+            transform-origin: left center;
+            transition: width 0.3s ease, background-color 1s ease;
+        }
+
+        .progress-bar.increase {
+            background-color: #1ae866;
+            transition: background-color 1s ease;
+        }
+
+        .progress-bar.decrease {
+            background-color: #cc0a0a;
+            transition: background-color 1s ease;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            min-width: 3em;
+            text-align: right;
+            margin-left: 0.5rem;
+            line-height: 1.5;
+        }
+
+        /* Add animation for game images */
+        .game-image {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.5s ease-out;
+            max-width: 256px;
+            max-height: 256px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+
+        .game-image.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Combat outcome images specific styles */
+        .combat-outcome {
+            margin: 0 auto;
+        }
+
+        /* Add dynamic width classes */
+        .health-width-0 { width: 0%; }
+        .health-width-10 { width: 10%; }
+        .health-width-20 { width: 20%; }
+        .health-width-30 { width: 30%; }
+        .health-width-40 { width: 40%; }
+        .health-width-50 { width: 50%; }
+        .health-width-60 { width: 60%; }
+        .health-width-70 { width: 70%; }
+        .health-width-80 { width: 80%; }
+        .health-width-90 { width: 90%; }
+        .health-width-100 { width: 100%; }
+
+        .game-content {
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+            justify-content: flex-start;
+            gap: 2rem;
+        }
+
+        .game-image-container {
+            flex: 0 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 256px;
+            margin-bottom: 1rem;
+        }
+
+        .game-message {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 120px;
+            text-align: center;
+            padding: 0 1rem;
+        }
+
+        .game-options {
+            flex: 0 0 auto;
+            margin-top: auto;
+            padding: 1rem;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
 </head>
 <body>
-    <div id="game-container">
-        % if player_stats:
-        <div id="stats-display">
-            <p>Health: {{player_stats['health']}} | Score: {{player_stats['score']}} | XP: {{player_stats['xp']}}</p>
-        </div>
-        % end
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Monsters and Treasure</h1>
+            % if player_stats and get('previous_stats'):
+            <div class="game-stats">
+                <div class="stat-container">
+                    <div class="stat-label">
+                        <span>❤️ Health</span>
+                        <span class="stat-value">{{player_stats['health'] if player_stats else 0}}</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar health-bar" 
+                             data-value="{{player_stats['health'] if player_stats else 0}}" 
+                             data-previous="{{previous_stats['health'] if previous_stats else 0}}"
+                             data-max="100"
+                             style="width: 100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-container">
+                    <div class="stat-label">
+                        <span>⭐️ Score</span>
+                        <span class="stat-value">{{player_stats['score'] if player_stats else 0}}</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar score-bar"
+                             data-value="{{player_stats['score'] if player_stats else 0}}"
+                             data-previous="{{previous_stats['score'] if previous_stats else 0}}"
+                             data-max="100"
+                             style="width: 100%">
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-container">
+                    <div class="stat-label">
+                        <span>✨ XP</span>
+                        <span class="stat-value">{{player_stats['xp'] if player_stats else 0}}</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar xp-bar"
+                             data-value="{{player_stats['xp'] if player_stats else 0}}"
+                             data-previous="{{previous_stats['xp'] if previous_stats else 0}}"
+                             data-max="200"
+                             style="width: 100%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            % end
+        </header>
         
-        <div id="game-output" class="{{get('victory_type', '').lower().replace(' ', '-')}}">
+        <main class="game-content">
             % if get('event_type'):
-            <div class="event-image">
+            <div class="game-image-container">
                 % if event_type == 'monster':
                 <img src="/static/images/monster.png" alt="Monster" class="game-image">
                 % elif event_type == 'treasure':
-                <img src="/static/images/treasure.png" alt="Treasure" class="game-image">
+                <img src="/static/images/treasure_rumor.png" alt="Treasure Rumor" class="game-image">
+                % elif event_type == 'treasure_found':
+                <img src="/static/images/treasure_found.png?v=20250214224000" alt="Treasure Found" class="game-image">
                 % elif event_type == 'trap':
                 <img src="/static/images/trap.png" alt="Trap" class="game-image">
                 % elif event_type == 'local':
                 <img src="/static/images/local.png" alt="Local Helper" class="game-image">
+                % elif event_type == 'combat_victory':
+                <img src="/static/images/combat/victory.png" alt="Combat Victory" class="game-image combat-outcome">
+                % elif event_type == 'combat_defeat':
+                <img src="/static/images/combat/defeat.png" alt="Combat Defeat" class="game-image combat-outcome">
+                % elif event_type == 'combat_escape':
+                <img src="/static/images/combat/escape.png" alt="Combat Escape" class="game-image combat-outcome">
+                % elif event_type == 'rest':
+                <img src="/static/images/states/rest.png" alt="Resting" class="game-image">
+                % elif event_type == 'rest_failed':
+                <img src="/static/images/states/rest_failed.png" alt="Rest Failed" class="game-image">
+                % elif event_type == 'welcome':
+                <img src="/static/images/states/welcome.png" alt="Welcome" class="game-image">
+                % elif event_type == 'journey_begin':
+                <img src="/static/images/states/journey_begin.png" alt="Journey Begins" class="game-image">
+                % elif event_type == 'adventure_start':
+                <img src="/static/images/states/adventure_start.png" alt="Adventure Starts" class="game-image">
+                % elif event_type == 'treasure_not_found':
+                <img src="/static/images/states/treasure_not_found.png" alt="Treasure Not Found" class="game-image">
+                % elif event_type == 'treasure_help_failed':
+                <img src="/static/images/states/treasure_help_failed.png" alt="Treasure Help Failed" class="game-image">
+                % elif event_type == 'treasure_ignored':
+                <img src="/static/images/states/treasure_ignored.png" alt="Treasure Ignored" class="game-image">
+                % elif event_type == 'local_unavailable':
+                <img src="/static/images/states/local_unavailable.png" alt="Local Unavailable" class="game-image">
+                % elif event_type == 'victory_perfect':
+                <img src="/static/images/states/victory_perfect.png" alt="Perfect Victory" class="game-image">
+                % elif event_type == 'victory_glorious':
+                <img src="/static/images/states/victory_glorious.png" alt="Glorious Victory" class="game-image">
+                % elif event_type == 'victory_pyrrhic':
+                <img src="/static/images/states/victory_pyrrhic.png" alt="Pyrrhic Victory" class="game-image">
+                % elif event_type == 'victory_standard':
+                <img src="/static/images/states/victory_standard.png" alt="Standard Victory" class="game-image">
+                % elif event_type == 'gameover':
+                <img src="/static/images/states/gameover.png" alt="Game Over" class="game-image">
                 % end
             </div>
             % end
-            {{message}}
-        </div>
-
-        <div id="game-input">
-            % if show_name_input:
-                <form action="/start" method="post">
-                    <input type="text" name="player_name" placeholder="Enter your name" required>
-                    <button type="submit" class="game-button">Start Adventure</button>
-                </form>
-            % end
             
-            % if show_choices:
-                <form action="/choice" method="post">
-                    <button type="submit" name="choice" value="adventure" class="game-button">Go on Adventure</button>
-                    <button type="submit" name="choice" value="rest" class="game-button">Rest</button>
-                </form>
-            % end
+            <div class="game-message">
+                {{message}}
+            </div>
 
-            % if show_treasure_choices:
-                <form action="/choice" method="post">
-                    <button type="submit" name="choice" value="search_alone" class="game-button">Search Alone</button>
-                    <button type="submit" name="choice" value="get_help" class="game-button">Get Help (10 points)</button>
-                    <button type="submit" name="choice" value="ignore" class="game-button">Ignore</button>
+            <div class="game-options">
+                % if show_name_input:
+                <form action="/start" method="post" class="space-y-4">
+                    <input type="text" name="player_name" placeholder="Enter your name" required class="input w-full">
+                    <button type="submit" class="btn-primary w-full">Start Adventure</button>
                 </form>
-            % end
+                % end
+                
+                % if show_restart:
+                <form action="/start" method="post">
+                    <input type="hidden" name="player_name" value="{{player_name}}">
+                    <button type="submit" class="btn-primary w-full">Restart Adventure</button>
+                </form>
+                % end
+                
+                % if show_choices:
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="adventure" class="btn-primary w-full">Continue Adventure</button>
+                    <button type="submit" name="choice" value="rest" class="btn-secondary w-full">Rest</button>
+                </form>
+                % end
 
-            % if show_monster_choices:
-                <form action="/choice" method="post">
-                    <button type="submit" name="choice" value="fight" class="game-button">Fight</button>
-                    <button type="submit" name="choice" value="run" class="game-button">Run</button>
+                % if show_treasure_choices:
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="search_alone" class="btn-primary w-full">Search Alone</button>
+                    <button type="submit" name="choice" value="get_help" class="btn-secondary w-full">Get Help (10 points)</button>
+                    <button type="submit" name="choice" value="ignore" class="btn-secondary w-full">Ignore</button>
                 </form>
-            % end
-        </div>
-        <div id="leaderboard-link">
-            <a href="/leaderboard" class="game-button">View Leaderboard</a>
-        </div>
+                % end
+
+                % if show_monster_choices:
+                <form action="/choice" method="post" class="space-y-3">
+                    <button type="submit" name="choice" value="fight" class="btn-primary w-full">Fight</button>
+                    <button type="submit" name="choice" value="run" class="btn-secondary w-full">Run</button>
+                </form>
+                % end
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center">
+            <a href="/leaderboard" class="btn-secondary inline-block">View Leaderboard</a>
+        </footer>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Track page view with enhanced context
+        trackGameEvent('screen_view', {
+            health: '{{player_stats["health"] if player_stats else 0}}',
+            score: '{{player_stats["score"] if player_stats else 0}}',
+            xp: '{{player_stats["xp"] if player_stats else 0}}'
+        });
+
+        // Track all button clicks with enhanced context
+        document.querySelectorAll('button[name="choice"]').forEach(button => {
+            button.addEventListener('click', function() {
+                const choice = this.value;
+                const eventParams = {
+                    choice: choice,
+                    health: '{{player_stats["health"] if player_stats else 0}}',
+                    score: '{{player_stats["score"] if player_stats else 0}}',
+                    xp: '{{player_stats["xp"] if player_stats else 0}}'
+                };
+
+                if (['fight', 'run'].includes(choice)) {
+                    trackGameEvent('combat_choice', eventParams);
+                } else if (['search_alone', 'get_help', 'ignore'].includes(choice)) {
+                    trackGameEvent('treasure_choice', eventParams);
+                } else if (choice === 'rest') {
+                    trackGameEvent('rest_choice', eventParams);
+                } else if (choice === 'adventure') {
+                    trackGameEvent('adventure_choice', eventParams);
+                }
+            });
+        });
+
+        // Track game over and victory events
+        % if event_type == 'gameover':
+            trackGameEvent('game_over', {
+                final_score: '{{player_stats["score"]}}',
+                final_xp: '{{player_stats["xp"]}}',
+                total_health: '{{player_stats["health"]}}'
+            });
+        % elif victory_type:
+            trackGameEvent('victory', {
+                victory_type: '{{ victory_type }}',
+                final_score: '{{player_stats["score"]}}',
+                final_xp: '{{player_stats["xp"]}}',
+                total_health: '{{player_stats["health"]}}'
+            });
+        % end
+
+        // Add animation for game images
+        function showGameImages() {
+            const images = document.querySelectorAll('.game-image');
+            images.forEach(img => {
+                // Wait for image to load
+                if (img.complete) {
+                    setTimeout(() => img.classList.add('show'), 100);
+                } else {
+                    img.onload = () => setTimeout(() => img.classList.add('show'), 100);
+                }
+            });
+        }
+
+        // Run image animations
+        showGameImages();
+
+        function updateProgressBars() {
+            const bars = document.querySelectorAll('.progress-bar');
+            
+            bars.forEach(bar => {
+                const currentValue = parseFloat(bar.getAttribute('data-value'));
+                const previousValue = parseFloat(bar.getAttribute('data-previous'));
+                
+                // Only animate if the values are different AND not undefined/null
+                if (!isNaN(currentValue) && !isNaN(previousValue) && currentValue !== previousValue) {
+                    // Remove existing classes first
+                    bar.classList.remove('increase', 'decrease');
+                    
+                    // Force a reflow
+                    void bar.offsetWidth;
+                    
+                    // Add appropriate class based on value change
+                    if (currentValue > previousValue) {
+                        bar.classList.add('increase');
+                    } else if (currentValue < previousValue) {
+                        bar.classList.add('decrease');
+                    }
+                    
+                    // Schedule removal of animation classes
+                    setTimeout(() => {
+                        bar.classList.remove('increase', 'decrease');
+                    }, 1000);
+                }
+            });
+        }
+
+        // Run animation check immediately after page load
+        updateProgressBars();
+        
+        // Also run when the page content updates
+        const observer = new MutationObserver(mutations => {
+            // Only update if data attributes changed
+            const shouldUpdate = mutations.some(mutation => 
+                mutation.type === 'attributes' && 
+                (mutation.attributeName === 'data-value' || mutation.attributeName === 'data-previous')
+            );
+            if (shouldUpdate) {
+                updateProgressBars();
+            }
+        });
+        
+        observer.observe(document.body, { 
+            attributes: true,
+            attributeFilter: ['data-value', 'data-previous'],
+            subtree: true 
+        });
+
+        // Function to update progress bar widths
+        function updateProgressWidth(bar, value, max) {
+            // Remove all width classes
+            bar.classList.forEach(className => {
+                if (className.startsWith('health-width-')) {
+                    bar.classList.remove(className);
+                }
+            });
+            
+            // Calculate percentage and round to nearest 10
+            const percentage = Math.round((value / max) * 10) * 10;
+            bar.classList.add(`health-width-${percentage}`);
+        }
+
+        // Update progress bar widths
+        document.querySelectorAll('.progress-bar').forEach(bar => {
+            const value = parseFloat(bar.getAttribute('data-value'));
+            const max = parseFloat(bar.getAttribute('data-max'));
+            const width = bar.classList.contains('xp-bar') ? 
+                         Math.min(100, (value / 2)) : 
+                         Math.min(100, value);
+            bar.style.width = width + '%';
+        });
+    });
+    </script>
 </body>
 </html> 
