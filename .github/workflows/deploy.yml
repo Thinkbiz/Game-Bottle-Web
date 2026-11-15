@@ -1,23 +1,31 @@
 name: Deploy to Production
 
+# Manual dispatch only. The push trigger was removed because the VPS SSH
+# port is closed to the public internet and accepts connections over
+# Tailscale. A GitHub-hosted runner cannot reach it, so a push-triggered
+# run would fail on every commit while still loading deploy secrets.
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+
+# Checkout needs repository read. This job does not write back to GitHub.
+permissions:
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
+          # OpenSSH private key from the VPS_SSH_KEY secret. Password auth
+          # via VPS_PASSWORD was removed so the job no longer accepts a password.
+          key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -x  # Enable debug mode
             
